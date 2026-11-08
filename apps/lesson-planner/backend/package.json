@@ -1,0 +1,48 @@
+{
+    "name": "lessonplan-backend",
+    "version": "1.0.0",
+    "description": "AI-Powered Lesson Plan Management System - Backend API",
+    "main": "src/server.js",
+    "scripts": {
+        "start": "node src/server.js",
+        "dev": "nodemon src/server.js",
+        "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "keywords": [
+        "education",
+        "lesson-plan",
+        "ai",
+        "rwanda",
+        "reb"
+    ],
+    "author": "",
+    "license": "ISC",
+    "dependencies": {
+        "@google/genai": "^2.12.0",
+        "axios": "^1.6.2",
+        "bcryptjs": "^2.4.3",
+        "cloudinary": "^2.10.0",
+        "compression": "^1.8.1",
+        "cors": "^2.8.5",
+        "dotenv": "^16.3.1",
+        "express": "^4.18.2",
+        "express-rate-limit": "^8.6.2",
+        "express-validator": "^7.0.1",
+        "helmet": "^8.3.0",
+        "jsonwebtoken": "^9.0.2",
+        "mammoth": "^1.11.0",
+        "multer": "^1.4.5-lts.1",
+        "mysql2": "^3.6.5",
+        "nodemailer": "^8.0.1",
+        "passport": "^0.7.0",
+        "passport-google-oauth20": "^2.0.0",
+        "pdf-parse": "^1.1.4",
+        "redis": "^4.6.13",
+        "socket.io": "^4.8.3",
+        "ua-parser-js": "^2.0.9",
+        "underscore": "^1.13.8"
+    },
+    "devDependencies": {
+        "nodemon": "^3.0.2"
+    }
+}
