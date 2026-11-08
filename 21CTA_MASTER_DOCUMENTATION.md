@@ -2030,7 +2030,7 @@ The backend reads environment variables from `apps/lesson-planner/backend/.env` 
 | Process manager / reverse proxy | Not present in the repository. |
 | Docker/Nginx topology | Described in historical plans; **not implemented** (`docker-compose.yml` is absent). |
 | Database hosting | Local MySQL/XAMPP; no production database provisioned. |
-| Frontend hosting | Local Vite dev server or backend static serving of `dist`. |
+| Frontend hosting | Local Vite dev server, backend static serving of `dist`, or Vercel (SPA config included in each frontend). |
 
 ### Local production-style check
 
@@ -2043,6 +2043,18 @@ npm start
 
 If `frontend/dist` exists, the backend serves it. Verify `/api/health` and the public site
 through the backend port.
+
+### Vercel frontend deployment
+
+The frontends are deployable to Vercel as static Vite projects (one Vercel project per
+frontend, with the project's Root Directory set to that frontend folder). The Express backend
+is **not** serverless-safe — it needs a persistent MySQL connection pool, Redis, Socket.IO,
+local uploads and background jobs — so it must run on a long-running host such as Render,
+Railway, Fly.io or a VPS. Set the frontend's `VITE_API_URL` to the backend's `/api` URL and
+add the Vercel origin to the backend's `CORS_ORIGIN`/`ALLOWED_ORIGINS`.
+
+Project settings, required environment variables and troubleshooting are in
+[docs/deployment/VERCEL.md](docs/deployment/VERCEL.md).
 
 ### Target production topology (planned)
 

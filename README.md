@@ -16,7 +16,8 @@ The implemented application is an **Express 4 API + React 18/Vite 5 frontend** i
 
 > **Status:** local development platform. It is **not deployed to production**, and the
 > exposed provider secrets still require owner rotation. See the master documentation for
-> the verified state of every module.
+> the verified state of every module. Vercel deployment configuration for the frontends is
+> included — see [docs/deployment/VERCEL.md](docs/deployment/VERCEL.md).
 
 ---
 
@@ -65,6 +66,7 @@ the current code are authoritative.
 │   └── reference/      MySQL and historical PostgreSQL reference SQL
 ├── docs/
 │   ├── archive/        Archived, superseded documentation
+│   ├── deployment/     Vercel and hosting guides
 │   └── security/       Key rotation runbook
 ├── infrastructure/
 │   └── backup/         Backup/restore scripts and policy
@@ -121,6 +123,28 @@ password `Demo@21cta`; the full list is in
 
 ---
 
+## Deploying on Vercel
+
+The frontends are Vercel-ready. The main Express backend is **not** serverless-safe (persistent
+MySQL pool, Redis, Socket.IO, uploads, background jobs) and must run on a long-running host
+such as Render, Railway, Fly.io, or a VPS; Vercel hosts the frontend and calls it through
+`VITE_API_URL`.
+
+| Vercel project | Root Directory | Build / Output |
+|---|---|---|
+| Main platform | `apps/lesson-planner/frontend` | `npm run build` → `dist` |
+| Original lesson planner | `digital_lesson_plan-main/frontend` | `npm run build` → `dist` |
+| RMS-MIS | `RMS-MMS-main` | static + `/api/reports/pdf.js` |
+| Legacy marks | `apps/marks` | static + `/api/reports/pdf.js` |
+
+Set `VITE_API_URL=https://<backend-host>/api` in Vercel's environment variables, then redeploy.
+Each frontend already includes a `vercel.json` with SPA routing and cache headers.
+
+Full instructions, required backend variables, and troubleshooting:
+**[docs/deployment/VERCEL.md](docs/deployment/VERCEL.md)**.
+
+---
+
 ## Key facts at a glance
 
 | Item | Value |
@@ -135,7 +159,7 @@ password `Demo@21cta`; the full list is in
 | Roles | 15 role codes, 17 demo accounts |
 | Module records | 22 (mapping to 18 documented modules) |
 | Languages | English, French, Kinyarwanda, Kiswahili |
-| Production | **Not deployed** |
+| Production | Frontends are Vercel-ready; backend needs a persistent host ([guide](docs/deployment/VERCEL.md)) |
 | Tests | Only RMS tests under `apps/marks/tests/` (17 tests: 7 pass, 10 fail); backend test script is a placeholder |
 
 ---
