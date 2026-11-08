@@ -3,6 +3,9 @@ const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const { pool } = require('./database');
 const { generateToken } = require('./jwt');
 
+const googleConfigured = Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
+
+if (googleConfigured) {
 passport.use(new GoogleStrategy({
     clientID: process.env.GOOGLE_CLIENT_ID,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
@@ -100,5 +103,10 @@ passport.use(new GoogleStrategy({
             return done(error, null);
         }
     }));
+} else {
+    console.warn('[WARN] Google OAuth is not configured (GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET missing). /api/auth/google is disabled.');
+}
+
+passport.googleConfigured = googleConfigured;
 
 module.exports = passport;

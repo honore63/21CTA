@@ -180,111 +180,32 @@ const startServer = async () => {
 
 
         const { pool } = require('./config/database');
-        let needsMigration = false;
-
+        // SAFETY GUARD (Phase 2 remediation): schema changes are NEVER applied
+        // automatically at startup. The previous implementation could DROP every
+        // non-view table when the seed user (users.id = 2) was missing or a query
+        // failed. That behaviour is removed permanently. Apply reviewed migrations
+        // or restore from a verified backup instead.
         try {
-            // Check if essential tables and users exist
             const [users] = await pool.query('SELECT id FROM users WHERE id = 2 LIMIT 1');
             const [lessonsTable] = await pool.query("SHOW TABLES LIKE 'lessons'");
             const [materialsTable] = await pool.query("SHOW TABLES LIKE 'lesson_materials'");
 
-            if (users.length === 0 || lessonsTable.length === 0 || materialsTable.length === 0) {
-                needsMigration = true;
+            const missingTables = [];
+            if (lessonsTable.length === 0) missingTables.push('lessons');
+            if (materialsTable.length === 0) missingTables.push('lesson_materials');
+
+            if (missingTables.length > 0) {
+                console.error('[ERROR] Database schema incomplete. Missing tables: ' + missingTables.join(', '));
+                console.error('   Automatic schema repair is DISABLED by design.');
+                console.error('   Import database/schema.sql explicitly, then restart.');
+            } else if (users.length === 0) {
+                console.warn('[WARN] Seed user id=2 not found. No automatic repair will be attempted.');
+            } else {
+                console.log('[OK] Database is healthy and data is present.');
             }
-        } catch (e) {
-            needsMigration = true;
-        }
-
-        let hasUserRows = false;
-        try {
-            const [[{ total }]] = await pool.query('SELECT COUNT(*) AS total FROM users');
-            hasUserRows = Number(total) > 0;
-        } catch (e) {
-            hasUserRows = false;
-        }
-
-        const allowDestructiveBootstrap = process.env.ALLOW_DESTRUCTIVE_BOOTSTRAP === 'true' && !hasUserRows;
-
-        if (needsMigration && !allowDestructiveBootstrap) {
-            console.warn('⚠️ Database incomplete, but destructive bootstrap is disabled. No tables were dropped. ' +
-                'Set ALLOW_DESTRUCTIVE_BOOTSTRAP=true only for an empty database to rebuild it from database/schema.sql.');
-        } else if (needsMigration) {
-            console.log('🔄 Database incomplete (missing user or tables). Starting RESILIENT Auto-Migration...');
-            try {
-                const potentialPaths = [
-                    path.join(__dirname, '../../database/schema.sql'),
-                    path.join(__dirname, '../database/schema.sql')
-                ];
-                const schemaPath = potentialPaths.find(p => fs.existsSync(p));
-
-                if (schemaPath) {
-                    let sql = fs.readFileSync(schemaPath, 'utf8');
-                    if (sql.charCodeAt(0) === 0xFEFF) sql = sql.slice(1);
-
-                    // CLEAN SQL: Remove toxic lines but preserve structure
-                    let cleanSql = sql.split(/\r?\n/)
-                        .filter(line => {
-                            const t = line.trim().toUpperCase();
-                            return !t.startsWith('--') && !t.startsWith('#') && !t.startsWith('/*') &&
-                                !t.startsWith('SET ') && !t.startsWith('START TRANSACTION') &&
-                                !t.startsWith('COMMIT') && t !== '';
-                        })
-                        .join('\n');
-
-                    // FORCE COMPATIBILITY: Convert ENUM location to VARCHAR to prevent truncation errors on empty strings
-                    cleanSql = cleanSql.replace(/enum\('inside','outside'\)/gi, "varchar(50)");
-                    // Ensure ENGINE=InnoDB is handled correctly
-                    cleanSql = cleanSql.replace(/ENGINE=InnoDB/gi, "ENGINE=InnoDB");
-
-                    const connection = await pool.getConnection();
-                    try {
-                        console.log('🧹 Clearing old tables...');
-                        await connection.query('SET SESSION FOREIGN_KEY_CHECKS = 0');
-                        await connection.query('SET SESSION sql_require_primary_key = 0');
-                        await connection.query('SET SESSION sql_mode = ""');
-
-                        const [tables] = await connection.query('SHOW TABLES');
-                        for (let table of tables) {
-                            const name = Object.values(table)[0];
-                            if (!name.toUpperCase().startsWith('V_')) {
-                                await connection.query(`DROP TABLE IF EXISTS \`${name}\``);
-                            }
-                        }
-
-                        console.log('🏗️ Building everything fresh...');
-                        // Splitting into statements for maximum reliability
-                        const statements = cleanSql.split(/;(?=(?:[^'"]|'[^']*'|"[^"]*")*$)/);
-
-                        for (let s of statements) {
-                            const stmt = s.trim();
-                            if (stmt) {
-                                try {
-                                    await connection.query(stmt);
-                                } catch (e) {
-                                    // Log error but continue (only if it's not a syntax error on a table creation)
-                                    if (stmt.toUpperCase().includes('CREATE TABLE')) {
-                                        console.error(`❌ Critical failure creating table: ${e.message}`);
-                                    } else {
-                                        // Silent skip for minor data errors like duplicates or non-critical truncations
-                                    }
-                                }
-                            }
-                        }
-
-                        // Drop and RECREATE views because they rely on tables
-                        // (Views are usually at the end of the schema file)
-
-                        await connection.query('SET SESSION FOREIGN_KEY_CHECKS = 1');
-                        console.log('✅ Master migration successful! All tables and accounts restored.');
-                    } finally {
-                        connection.release();
-                    }
-                }
-            } catch (migError) {
-                console.error('❌ Migration fatal error:', migError.message);
-            }
-        } else {
-            console.log('✅ Database is healthy and data is present.');
+        } catch (dbCheckError) {
+            console.error('[ERROR] Database health check failed:', dbCheckError.message);
+            console.error('   Automatic schema repair is DISABLED by design. Verify connectivity and schema manually.');
         }
 
         // Check for is_suspended column specifically (Incremental Migration for User Management)
