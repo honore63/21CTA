@@ -374,7 +374,10 @@ flowchart TB
 
 - Loads environment variables with `dotenv`.
 - Tests the database connection, creates the database if possible, and runs
-  `createTablesIfNotExist()`.
+  `createTablesIfNotExist()`, followed by additional compatibility checks and migrations.
+- Applies legacy startup DDL (`CREATE`/`ALTER`) and one data migration that updates rows and
+  drops the deprecated `special_needs_learners.type` column when present. The former
+  destructive full-schema rebuild is disabled, but startup is not read-only.
 - Configures Helmet, CORS, compression, JSON/URL-encoded body limits (50 MB), and static
   serving for the frontend build and uploads.
 - Mounts the API routers listed in §29.
@@ -383,10 +386,9 @@ flowchart TB
 - Serves `index.html` for non-API routes when a frontend build exists; otherwise returns a
   JSON API-status message.
 
-> **Contradiction note:** `.env.example` says "Schema changes are never applied
-> automatically at startup." In practice `server.js` calls `createTablesIfNotExist()`, and
-> `database.js` can create the database. Schema changes should still be applied explicitly;
-> the startup behaviour is a compatibility measure, not a migration system.
+> **Safety note:** `.env.example` warns that startup still performs legacy schema and data
+> migrations. Review those operations before connecting the server to a database that must
+> remain unchanged; startup is a compatibility mechanism, not a migration system.
 
 ### Runtime topology (current)
 
@@ -1447,8 +1449,8 @@ All demo records are clearly labelled and use real MySQL rows. The demo password
 - There is **no central migration ledger** in the current tree.
 - Platform changes are applied by SQL files in `database/migrations/platform/`.
 - Lesson Planner changes are applied by SQL files in `database/migrations/lesson-planner/`.
-- The backend runs `createTablesIfNotExist()` at startup for compatibility; this is not a
-  substitute for deliberate migrations.
+- The backend also runs legacy DDL and a conditional data migration at startup; this is not
+  a substitute for deliberate, reviewed migrations.
 - The original RMS-MIS PostgreSQL/Supabase SQL in `database/reference/postgres/` is
   historical reference only. The active platform uses MySQL `21cta`.
 
@@ -2007,8 +2009,8 @@ The backend reads environment variables from `apps/lesson-planner/backend/.env` 
 
 - The `RATE_LIMIT_*` values in `.env.example` do not all match the current code defaults;
   the code values in §30 are authoritative.
-- The `.env.example` comment says schema changes are never applied automatically; the
-  current `server.js` still calls `createTablesIfNotExist()`. Apply migrations explicitly.
+- Backend startup applies legacy `CREATE`/`ALTER` statements and a conditional data migration;
+  review them before starting against an existing database.
 - `DATABASE_URL`/`DB_URL` are supported by `database.js` but were not listed in the sample
   `.env.example` in the reviewed tree.
 - Google OAuth, AI, email, Redis, Cloudinary, and voice features degrade or remain disabled
