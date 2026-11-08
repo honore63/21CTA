@@ -1,8 +1,38 @@
+# Dependencies
 node_modules/
+vendor/
+
+# Build outputs
 dist/
+build/
+out/
+.next/
+.vercel/
+
+# Caches and coverage
+.cache/
+coverage/
+
+# Environment variables
 .env
 .env.*
 !.env.example
+
+# Logs
 *.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS files
 .DS_Store
-.vercel/
+Thumbs.db
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Temporary files
+*.tmp

@@ -128,7 +128,7 @@ The platform combines two originally separate systems:
 | School portals | Implemented through public school endpoints and `school_public_profiles`. |
 | Production hosting | **Not deployed**; no domain, DNS, TLS, or hosting credentials in the repo. |
 | Secret rotation | **Pending**; see `docs/security/KEY_ROTATION_RUNBOOK.md`. |
-| Source control | Repository is a Git repo; the platform work is largely uncommitted on `main`. |
+| Source control | Git repository; branch and pull-request status are tracked by the repository host. |
 
 ### Scope of this document
 
@@ -1362,13 +1362,15 @@ visitor statistics but is not a full analytics product.
 For a fresh local database, apply:
 
 1. `database/schema/001_lesson_planner.sql`
-2. `database/migrations/platform/002_platform_core.sql`
-3. `database/migrations/platform/003_school_public_portal.sql`
-4. `database/seeders/003_platform_seed.sql` (idempotent seed)
+2. `database/migrations/lesson-planner/add_scheduling_tables.sql`
+3. `database/migrations/platform/002_platform_core.sql`
+4. `database/migrations/platform/003_school_public_portal.sql`
+5. `database/seeders/003_platform_seed.sql` (idempotent seed)
 
-The legacy migrations in `database/migrations/lesson-planner/` are for the original Lesson
-Planner schema and may be applied only if that schema is being upgraded from an older
-snapshot.
+The scheduling migration is required because the platform core migration adds `school_id`
+to `teacher_schedules`. Other files in `database/migrations/lesson-planner/` are for
+upgrading the original Lesson Planner schema; apply them only when their tables or columns
+are absent.
 
 ### Main table groups
 
@@ -1839,6 +1841,7 @@ Run the files in order. In PowerShell, pipe the file into the client:
 
 ```powershell
 Get-Content -Raw database\schema\001_lesson_planner.sql | & C:\xampp\mysql\bin\mysql.exe -u root 21cta
+Get-Content -Raw database\migrations\lesson-planner\add_scheduling_tables.sql | & C:\xampp\mysql\bin\mysql.exe -u root 21cta
 Get-Content -Raw database\migrations\platform\002_platform_core.sql | & C:\xampp\mysql\bin\mysql.exe -u root 21cta
 Get-Content -Raw database\migrations\platform\003_school_public_portal.sql | & C:\xampp\mysql\bin\mysql.exe -u root 21cta
 Get-Content -Raw database\seeders\003_platform_seed.sql | & C:\xampp\mysql\bin\mysql.exe -u root 21cta
@@ -1848,6 +1851,7 @@ In `cmd.exe`, the equivalent is:
 
 ```bat
 C:\xampp\mysql\bin\mysql.exe -u root 21cta < database\schema\001_lesson_planner.sql
+C:\xampp\mysql\bin\mysql.exe -u root 21cta < database\migrations\lesson-planner\add_scheduling_tables.sql
 C:\xampp\mysql\bin\mysql.exe -u root 21cta < database\migrations\platform\002_platform_core.sql
 C:\xampp\mysql\bin\mysql.exe -u root 21cta < database\migrations\platform\003_school_public_portal.sql
 C:\xampp\mysql\bin\mysql.exe -u root 21cta < database\seeders\003_platform_seed.sql
@@ -2194,7 +2198,7 @@ contain the suites that would reproduce those totals.
 | Automated tests | Sparse; only RMS tests and backend placeholder. |
 | Production deployment | **Not deployed.** |
 | Secrets | **Exposed credentials pending rotation.** |
-| Source control | Platform work largely uncommitted; no `gh` CLI available for PR creation. |
+| Source control | Git branch and review status are tracked by the repository host. |
 
 ### Known issues and blockers
 
@@ -2222,7 +2226,7 @@ platform. The roadmap below reflects the current implemented direction.
 #### Near term (stabilize and secure)
 
 1. Rotate Aiven, Gemini, Groq, and JWT secrets; update environments.
-2. Commit the platform work on `main` and open a review PR manually.
+2. Complete branch validation, then open a review PR from the integration branch.
 3. Add backend API tests for auth, RBAC, school isolation, module guards, marks lifecycle,
    and reports.
 4. Add frontend smoke tests and a build check to CI.

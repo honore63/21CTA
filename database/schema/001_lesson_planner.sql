@@ -434,6 +434,7 @@ CREATE TABLE `users` (
   `id` int(11) NOT NULL,
   `full_name` varchar(255) NOT NULL,
   `email` varchar(255) NOT NULL,
+  `phone_number` varchar(20) DEFAULT NULL,
   `password_hash` varchar(255) NOT NULL,
   `role` enum('admin','teacher') NOT NULL DEFAULT 'teacher',
   `school_name` varchar(255) DEFAULT NULL,
@@ -614,6 +615,7 @@ ALTER TABLE `units`
 ALTER TABLE `users`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `email` (`email`),
+  ADD UNIQUE KEY `idx_phone_unique` (`phone_number`),
   ADD KEY `idx_email` (`email`),
   ADD KEY `idx_role` (`role`);
 

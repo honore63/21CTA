@@ -94,6 +94,7 @@ and optionally Gemini/Groq/SMTP credentials.
 # 1. Create and load the database
 & C:\xampp\mysql\bin\mysql.exe -u root -e "CREATE DATABASE IF NOT EXISTS 21cta CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
 Get-Content -Raw database\schema\001_lesson_planner.sql | & C:\xampp\mysql\bin\mysql.exe -u root 21cta
+Get-Content -Raw database\migrations\lesson-planner\add_scheduling_tables.sql | & C:\xampp\mysql\bin\mysql.exe -u root 21cta
 Get-Content -Raw database\migrations\platform\002_platform_core.sql | & C:\xampp\mysql\bin\mysql.exe -u root 21cta
 Get-Content -Raw database\migrations\platform\003_school_public_portal.sql | & C:\xampp\mysql\bin\mysql.exe -u root 21cta
 Get-Content -Raw database\seeders\003_platform_seed.sql | & C:\xampp\mysql\bin\mysql.exe -u root 21cta

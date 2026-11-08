@@ -177,16 +177,14 @@ const startServer = async () => {
 
         startListen(PORT);
 
-        // 2. Run migrations and verify tables in background
+        // 2. Run legacy schema setup and verify tables
         await createTablesIfNotExist();
 
 
         const { pool } = require('./config/database');
-        // SAFETY GUARD (Phase 2 remediation): schema changes are NEVER applied
-        // automatically at startup. The previous implementation could DROP every
-        // non-view table when the seed user (users.id = 2) was missing or a query
-        // failed. That behaviour is removed permanently. Apply reviewed migrations
-        // or restore from a verified backup instead.
+        // Phase 2 removed the destructive full-schema rebuild. Legacy compatibility
+        // setup and migrations below still issue DDL and may migrate data, so review
+        // them before starting against a database whose schema must remain unchanged.
         try {
             const [users] = await pool.query('SELECT id FROM users WHERE id = 2 LIMIT 1');
             const [lessonsTable] = await pool.query("SHOW TABLES LIKE 'lessons'");
