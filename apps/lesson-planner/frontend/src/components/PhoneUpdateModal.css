@@ -1,0 +1,140 @@
+.phone-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(15, 23, 42, 0.85);
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9998;
+}
+
+.phone-modal-close {
+    position: absolute;
+    top: 1.5rem;
+    right: 1.5rem;
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    z-index: 10;
+}
+
+.phone-modal-close:hover {
+    background: var(--slate-100);
+    color: var(--text-main);
+    transform: rotate(90deg);
+}
+
+[data-theme='dark'] .phone-modal-close:hover {
+    background: var(--slate-800);
+}
+
+.phone-modal-content {
+    background: var(--bg-card);
+    width: 100%;
+    max-width: 450px;
+    max-height: 90vh;
+    padding: 2.5rem;
+    border-radius: 24px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    border: 1px solid var(--border-color);
+    position: relative;
+    overflow-y: auto;
+}
+
+.phone-modal-header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.phone-icon-badge {
+    width: 60px;
+    height: 60px;
+    background: var(--color-primary-light);
+    color: white;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1.5rem;
+    box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.3);
+}
+
+.phone-modal-header h2 {
+    font-size: 1.75rem;
+    font-weight: 800;
+    color: var(--text-main);
+    margin-bottom: 0.75rem;
+}
+
+.phone-modal-header p {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    line-height: 1.5;
+}
+
+.phone-modal-form {
+    display: flex;
+    flex-direction: column;
+}
+
+.security-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 1rem;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+}
+
+.security-info svg {
+    flex-shrink: 0;
+}
+
+.animate-slide-up {
+    animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ===== Mobile: slide up from bottom ===== */
+@media (max-width: 640px) {
+    .phone-modal-overlay {
+        align-items: flex-end;
+        padding: 0;
+    }
+
+    .phone-modal-content {
+        max-width: 100%;
+        border-radius: 24px 24px 0 0;
+        padding: 1.75rem 1.25rem;
+        position: relative;
+        max-height: 92vh;
+    }
+}
+
+@media (max-width: 360px) {
+    .phone-modal-content {
+        padding: 1.25rem 1rem;
+    }
+}
+

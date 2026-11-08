@@ -1,0 +1,40 @@
+/* ── Skeleton / Ghost Loading CSS ────────────────────────────────── */
+
+@keyframes skeleton-shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--c-surface-2) 25%,
+    var(--c-border) 50%,
+    var(--c-surface-2) 75%
+  );
+  background-size: 800px 100%;
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+  display: block;
+  flex-shrink: 0;
+}
+
+[data-theme="dark"] .skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    #1c2331 25%,
+    #262f3d 50%,
+    #1c2331 75%
+  );
+  background-size: 800px 100%;
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+}
+
+.skeleton-card {
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Subtle fade-in when content replaces skeleton */
+.skeleton-fade-in {
+  animation: fadeIn 0.3s ease both;
+}

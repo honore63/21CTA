@@ -1,0 +1,348 @@
+/* =====================================================
+   RESPONSIVE OVERRIDES — Platform-wide Mobile Fix
+   Covers: Visitor pages, Teacher & Admin dashboards
+   ===================================================== */
+
+/* ── Tablet (≤ 1024px) ───────────────────────────── */
+@media (max-width: 1024px) {
+
+  /* Admin Dashboard: two-column becomes single column */
+  .admin-two-col {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* ProfilePage: side-by-side becomes stacked */
+  .profile-two-col {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* All generic inline grids with fixed two-col */
+  [style*="1.5fr 1fr"],
+  [style*="360px 1fr"],
+  [style*="320px 1fr"],
+  [style*="1fr 1fr"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Pricing: 4-col → 2-col already handled in PricingPage.css, keep it */
+  .pricing-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  /* MoMo card header wraps */
+  .momo-card-header {
+    flex-wrap: wrap;
+    gap: var(--sp-4);
+  }
+}
+
+/* ── Mobile (≤ 768px) ────────────────────────────── */
+@media (max-width: 768px) {
+
+  /* ── Visitor / Public pages ── */
+
+  /* Landing page chat overlay moves to full width */
+  .floating-chat-container {
+    width: calc(100vw - 32px) !important;
+    right: 0 !important;
+    left: 0 !important;
+    margin: 0 16px !important;
+    position: fixed !important;
+    bottom: 90px !important;
+    height: 60vh !important;
+  }
+
+  .floating-chat-widget {
+    bottom: 20px;
+    right: 16px;
+  }
+
+  /* Hero actions stack vertically */
+  .hero-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .hero-actions .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Stats section wraps */
+  .stats-container {
+    grid-template-columns: repeat(2, 1fr) !important;
+    padding: 0 var(--sp-4);
+  }
+
+  /* Section padding reduction */
+  section {
+    padding: var(--sp-12) var(--sp-4) !important;
+  }
+
+  /* MoMo section */
+  .momo-card {
+    padding: var(--sp-6) !important;
+  }
+
+  .momo-card-header {
+    flex-direction: column;
+  }
+
+  .secure-badge {
+    margin-left: 0;
+    width: fit-content;
+  }
+
+  .momo-footer {
+    flex-direction: column;
+    align-items: stretch;
+    text-align: center;
+  }
+
+  .btn-momo-cta {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Pricing grid: 1 col on mobile */
+  .pricing-grid {
+    grid-template-columns: 1fr !important;
+    max-width: 440px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .pricing-container {
+    padding: var(--sp-8) var(--sp-4) !important;
+  }
+
+  /* About page stat items wrap */
+  .stats-mini {
+    gap: var(--sp-6) !important;
+  }
+
+  /* FAQ / Docs / Contact pages */
+  .docs-layout,
+  .faq-layout,
+  .faq-container {
+    grid-template-columns: 1fr !important;
+    flex-direction: column !important;
+  }
+
+  .faq-header {
+    position: static !important;
+    margin-bottom: var(--sp-8);
+    text-align: center;
+  }
+
+  /* CTA actions */
+  .cta-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .cta-actions .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* ── Admin Dashboard ── */
+
+  /* Header row: stacks vertically */
+  .admin-console-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: var(--sp-4) !important;
+  }
+
+  /* Management tool cards: 1-col */
+  .admin-tools-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Recent plans items: hide date on small screens */
+  .admin-plan-date {
+    display: none;
+  }
+
+  /* ── All Lesson Plans page ── */
+
+  /* Filter grid: stacks */
+  .lesson-filter-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Plan item card: stacks actions below info */
+  .plan-item-card > div:first-child {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: var(--sp-4) !important;
+  }
+
+  .plan-item-card .plan-item-actions {
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  /* ── Teacher Dashboard ── */
+
+  .dashboard-header-flex {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: var(--sp-3) !important;
+  }
+
+  .dashboard-header-flex .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Stats grid: 2 cols on mobile */
+  .dashboard-stats-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  /* Auth pages: two-col form stacks */
+  [style*="1fr 1fr"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* UserDetails page left panel full width */
+  [style*="360px 1fr"],
+  [style*="320px 1fr"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* ProfilePage grids */
+  [style*="repeat(3, 1fr)"] {
+    grid-template-columns: repeat(3, 1fr) !important; /* keep 3-col mini stats */
+  }
+
+  /* ManageUsers page: hide less important columns */
+  .manage-users-table th:nth-child(3),
+  .manage-users-table td:nth-child(3),
+  .manage-users-table th:nth-child(4),
+  .manage-users-table td:nth-child(4) {
+    display: none;
+  }
+
+  /* Table wrapper always scrollable */
+  .table-wrap,
+  .table-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* PublicNavbar links collapse (handled by component, ensure container wraps) */
+  .public-navbar-links {
+    display: none;
+  }
+  .public-navbar-mobile-btn {
+    display: flex !important;
+  }
+}
+
+/* ── Small Mobile (≤ 480px) ─────────────────────── */
+@media (max-width: 480px) {
+
+  /* Stats strip: 1-col */
+  .stats-container {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Dashboard stats: 1-col */
+  .dashboard-stats-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Admin stat cards: compact */
+  .admin-stat-card {
+    padding: var(--sp-4) !important;
+  }
+
+  /* Lesson plan page action buttons: stack */
+  .plan-actions {
+    grid-template-columns: 1fr !important;
+    width: 100% !important;
+  }
+
+  /* Auth card padding compact */
+  .auth-centered-card {
+    padding: var(--sp-6) !important;
+    border-radius: var(--r-lg) !important;
+  }
+
+  /* Page titles */
+  .auth-title-large {
+    font-size: 1.5rem !important;
+  }
+
+  /* Admin console title */
+  h1[style*="2.5rem"] {
+    font-size: 1.75rem !important;
+  }
+
+  /* Plan item card: compress icon */
+  .plan-item-card [style*="width: 56px"] {
+    display: none;
+  }
+
+  /* Hide breadcrumbs */
+  .topbar-breadcrumb {
+    display: none;
+  }
+
+  /* Pricing badge ribbon */
+  .plan-badge {
+    top: 10px;
+    right: -30px;
+    font-size: 0.55rem;
+    padding: 5px 35px;
+  }
+
+  /* CTA card padding */
+  .cta-content-card {
+    padding: var(--sp-10) var(--sp-6) !important;
+    border-radius: var(--r-xl) !important;
+  }
+
+  /* About/Landing hero font clamp handles itself, but ensure no overflow */
+  .hero-badge {
+    font-size: 0.7rem;
+    padding: 6px 12px;
+    text-align: center;
+  }
+
+  /* Floating chat FAB stays accessible */
+  .chat-toggle-fab {
+    width: 52px !important;
+    height: 52px !important;
+  }
+
+  /* Form inputs prevent iOS zoom */
+  input, select, textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* ── Very Small (≤ 360px) ────────────────────────── */
+@media (max-width: 360px) {
+  section {
+    padding: var(--sp-8) var(--sp-3) !important;
+  }
+
+  .pricing-container {
+    padding: var(--sp-6) var(--sp-3) !important;
+  }
+
+  .auth-centered-card {
+    padding: var(--sp-4) !important;
+  }
+
+  .vibrant-submit-btn,
+  .vibrant-secondary-btn {
+    padding: 10px !important;
+    font-size: 0.875rem !important;
+  }
+}

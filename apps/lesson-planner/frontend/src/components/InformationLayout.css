@@ -1,0 +1,100 @@
+.info-layout-premium {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background: var(--c-bg);
+}
+
+.info-body-premium {
+    flex: 1;
+    padding: var(--sp-12) 0;
+}
+
+.info-container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 0 var(--sp-6);
+}
+
+.info-breadcrumb-nav {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    margin-bottom: var(--sp-8);
+}
+
+.breadcrumb-root {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--c-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.breadcrumb-separator {
+    color: var(--c-text-muted);
+    opacity: 0.5;
+}
+
+.breadcrumb-active {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--c-brand);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.info-main-content {
+    background: var(--c-surface);
+    border: 1px solid var(--c-border);
+    border-radius: var(--r-xl);
+    padding: var(--sp-10);
+    box-shadow: var(--sh-md);
+}
+
+/* Common Info Page Typography */
+.info-title {
+    font-size: 2.2rem;
+    font-weight: 900;
+    letter-spacing: -0.04em;
+    margin-bottom: var(--sp-4);
+    color: var(--c-text-primary);
+}
+
+.info-subtitle {
+    font-size: 1.05rem;
+    color: var(--c-text-secondary);
+    line-height: 1.6;
+    margin-bottom: var(--sp-10);
+}
+
+.info-section-title {
+    font-size: 1.4rem;
+    font-weight: 800;
+    margin: var(--sp-10) 0 var(--sp-4);
+    color: var(--c-text-primary);
+    border-bottom: 1px solid var(--c-border-soft);
+    padding-bottom: var(--sp-2);
+}
+
+.info-text {
+    font-size: 0.95rem;
+    color: var(--c-text-secondary);
+    line-height: 1.8;
+    margin-bottom: var(--sp-5);
+}
+
+.highlight-gradient {
+    color: var(--c-brand);
+}
+
+@media (max-width: 768px) {
+    .info-main-content {
+        padding: var(--sp-6);
+        border-radius: var(--r-lg);
+    }
+    
+    .info-title {
+        font-size: 1.8rem;
+    }
+}

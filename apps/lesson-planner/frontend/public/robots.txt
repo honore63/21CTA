@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+Disallow: /dashboard
+Disallow: /classes/*
+Disallow: /profile
+Disallow: /admin/*
+Disallow: /materials
+Disallow: /reference-materials
+Disallow: /auth/*
+
+Sitemap: https://digital-lesson-plan.vercel.app/sitemap.xml
