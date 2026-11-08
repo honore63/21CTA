@@ -5,7 +5,7 @@ Rules applied: no data deletion, no MySQL → Postgres replacement, every migrat
 ## Phase 0 — Safety hotfixes (in the original repos, before integration)
 | # | Change | Repo |
 |---|---|---|
-| 0.1 | Disable the destructive bootstrap in `server.js`. Allow it only when `ALLOW_DESTRUCTIVE_BOOTSTRAP=true` **and** the database has zero tables | LPG |
+| 0.1 | Remove the destructive bootstrap from `server.js` entirely. Startup now performs a read-only health check and never drops tables | LPG |
 | 0.2 | Rotate the Aiven password. `import_db.js` reads env vars. Purge the secret from git history | LPG |
 | 0.3 | Replace `database/schema.sql` with schema-only + anonymised seed | LPG |
 | 0.4 | Socket.IO handshake auth. `JWT_SECRET` fail-fast. Exact-origin CORS | LPG |

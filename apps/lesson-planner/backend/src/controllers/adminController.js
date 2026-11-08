@@ -367,7 +367,7 @@ exports.backupDatabase = async (req, res, next) => {
 
         // 1. Get all tables
         const [tables] = await pool.query('SHOW TABLES');
-        const dbName = process.env.DB_NAME || 'lessonplan_db';
+        const dbName = process.env.DB_NAME || '21cta';
         const tableKey = `Tables_in_${dbName}`;
 
         let sqlDump = `-- Lesson Plan AI System Backup\n`;

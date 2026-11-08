@@ -8,8 +8,13 @@ const authMiddleware = require('../middleware/authMiddleware');
 router.post('/register', authController.register);
 router.post('/login', authController.login);
 
-// Google OAuth routes
+// Google OAuth routes (only available when credentials are configured)
+const googleEnabled = Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
+
 router.get('/google', (req, res, next) => {
+    if (!googleEnabled) {
+        return res.status(503).json({ error: 'Google sign-in is not configured on this server.' });
+    }
     const { action, fingerprint } = req.query;
     // We combine action and fingerprint into the state parameter
     const stateObj = JSON.stringify({ action: action || 'login', fingerprint: fingerprint || null });
@@ -22,6 +27,9 @@ router.get('/google', (req, res, next) => {
 });
 
 router.get('/google/callback', (req, res, next) => {
+    if (!googleEnabled) {
+        return res.status(503).json({ error: 'Google sign-in is not configured on this server.' });
+    }
     passport.authenticate('google', { session: false }, (err, user, info) => {
         const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
         

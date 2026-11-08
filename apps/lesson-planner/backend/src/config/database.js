@@ -15,7 +15,7 @@ if (process.env.DATABASE_URL || process.env.DB_URL) {
     port: process.env.DB_PORT || 3306,
     user: process.env.DB_USER || 'root',
     password: process.env.DB_PASSWORD || '',
-    database: process.env.DB_NAME || 'lessonplan_db',
+    database: process.env.DB_NAME || '21cta',
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0,
@@ -67,7 +67,7 @@ const testConnection = async () => {
 
             try {
                 const tempConn = await mysql.createConnection(connectionConfig);
-                await tempConn.query(`CREATE DATABASE IF NOT EXISTS \`${process.env.DB_NAME || 'lessonplan_db'}\``);
+                await tempConn.query(`CREATE DATABASE IF NOT EXISTS \`${process.env.DB_NAME || '21cta'}\``);
                 await tempConn.end();
             } catch (createDbErr) {
                 // If this fails, it might be because the user doesn't have permissions, 
@@ -310,9 +310,14 @@ const createTablesIfNotExist = async () => {
                 INDEX idx_due_date (due_date)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
         `);
-        // Also ensure subject_id column on syllabuses for FK-based matching
-        const [sylCols] = await connection.query("SHOW COLUMNS FROM syllabuses LIKE 'subject_id'");
-        if (sylCols.length === 0) {
+        // Also ensure subject_id column on syllabuses for FK-based matching.
+        // On a brand-new database the syllabuses table is created later in
+        // server.js, so check for it first instead of logging a false error.
+        const [sylTables] = await connection.query("SHOW TABLES LIKE 'syllabuses'");
+        const [sylCols] = sylTables.length > 0
+            ? await connection.query("SHOW COLUMNS FROM syllabuses LIKE 'subject_id'")
+            : [[]];
+        if (sylTables.length > 0 && sylCols.length === 0) {
             console.log('📦 Adding subject_id FK column to syllabuses...');
             await connection.query('ALTER TABLE syllabuses ADD COLUMN subject_id INT DEFAULT NULL AFTER id');
             await connection.query('CREATE INDEX idx_syllabus_subject ON syllabuses(subject_id)');

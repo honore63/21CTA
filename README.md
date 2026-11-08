@@ -27,7 +27,7 @@ and `RMS-MMS-main/` is now `apps/marks/`.
 * `apps/marks`: none.
 * `apps/lesson-planner`:
   * secrets and personal data were removed before the first commit: the database credentials in `backend/scripts/import_db.js` now come from env vars, `backend/.env.example` has placeholder AI keys, and `database/schema.sql` has demo users in place of real accounts;
-  * the startup routine no longer drops all tables when the database looks incomplete. It only does so when `ALLOW_DESTRUCTIVE_BOOTSTRAP=true` **and** the `users` table is empty.
+  * the startup routine no longer drops tables at all. If the schema looks incomplete it logs an error and continues; schema changes must be applied explicitly from reviewed SQL or a verified backup.
 
 ## Running each app
 
