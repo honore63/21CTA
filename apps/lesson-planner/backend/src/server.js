@@ -195,7 +195,20 @@ const startServer = async () => {
             needsMigration = true;
         }
 
-        if (needsMigration) {
+        let hasUserRows = false;
+        try {
+            const [[{ total }]] = await pool.query('SELECT COUNT(*) AS total FROM users');
+            hasUserRows = Number(total) > 0;
+        } catch (e) {
+            hasUserRows = false;
+        }
+
+        const allowDestructiveBootstrap = process.env.ALLOW_DESTRUCTIVE_BOOTSTRAP === 'true' && !hasUserRows;
+
+        if (needsMigration && !allowDestructiveBootstrap) {
+            console.warn('⚠️ Database incomplete, but destructive bootstrap is disabled. No tables were dropped. ' +
+                'Set ALLOW_DESTRUCTIVE_BOOTSTRAP=true only for an empty database to rebuild it from database/schema.sql.');
+        } else if (needsMigration) {
             console.log('🔄 Database incomplete (missing user or tables). Starting RESILIENT Auto-Migration...');
             try {
                 const potentialPaths = [
