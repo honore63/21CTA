@@ -79,7 +79,7 @@ const LoginPage = () => {
             if (redirectTo) {
                 navigate(planId ? `${redirectTo}?plan=${planId}` : redirectTo);
             } else {
-                navigate('/dashboard');
+                navigate('/app/dashboard');
             }
         } catch (error) {
             toast.error(error.response?.data?.message || 'Login failed');
@@ -158,7 +158,7 @@ const LoginPage = () => {
 
                     <div style={{ marginTop: 'var(--sp-10)', textAlign: 'center' }}>
                         <p style={{ fontSize: '.85rem', color: 'var(--c-text-secondary)' }}>
-                            New here? <Link to="/register" style={{ color: 'var(--c-brand)', fontWeight: 700, textDecoration: 'none' }}>Create an Account</Link>
+                            New here? <Link to="/signup" style={{ color: 'var(--c-brand)', fontWeight: 700, textDecoration: 'none' }}>Create an Account</Link>
                         </p>
                     </div>
 

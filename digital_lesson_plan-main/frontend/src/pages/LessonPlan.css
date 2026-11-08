@@ -1,0 +1,714 @@
+.lesson-plan-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: start;
+    margin-bottom: var(--spacing-xl);
+    padding: var(--spacing-xl);
+    background: var(--bg-card);
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--shadow-md);
+}
+
+.lesson-plan-header h1 {
+    margin-bottom: var(--spacing-sm);
+}
+
+.lesson-plan-header p {
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+.provider-select {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.provider-select label {
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+.provider-select select {
+    min-width: 150px;
+}
+
+.lesson-plan-content {
+    background: var(--bg-card);
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--shadow-md);
+    overflow: hidden;
+}
+
+.plan-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--spacing-lg);
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.plan-meta {
+    display: flex;
+    gap: var(--spacing-lg);
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+}
+
+.plan-meta span {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+}
+
+.plan-actions {
+    display: flex;
+    gap: var(--spacing-sm);
+    align-items: center;
+}
+
+.export-dropdown {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 8px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-md);
+    box-shadow: var(--shadow-lg);
+    z-index: 1000;
+    min-width: 220px;
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    animation: fadeInDown 0.2s ease-out;
+}
+
+.export-option {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 16px;
+    border: none;
+    background: transparent;
+    width: 100%;
+    text-align: left;
+    cursor: pointer;
+    border-radius: var(--border-radius-sm);
+    color: var(--text-primary);
+    font-size: 14px;
+    transition: all 0.2s;
+}
+
+.export-option:hover {
+    background: var(--bg-secondary);
+    color: var(--color-primary);
+}
+
+.export-option svg {
+    font-size: 18px;
+}
+
+@keyframes fadeInDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.plan-body {
+    padding: var(--spacing-2xl);
+    line-height: 1.8;
+}
+
+.plan-body h1 {
+    font-size: var(--font-size-3xl);
+    margin-top: var(--spacing-xl);
+    margin-bottom: var(--spacing-lg);
+    color: var(--color-primary);
+    border-bottom: 2px solid var(--color-primary);
+    padding-bottom: var(--spacing-sm);
+}
+
+.plan-body h2 {
+    font-size: var(--font-size-2xl);
+    margin-top: var(--spacing-xl);
+    margin-bottom: var(--spacing-md);
+    color: var(--color-secondary);
+}
+
+.plan-body h3 {
+    font-size: var(--font-size-xl);
+    margin-top: var(--spacing-lg);
+    margin-bottom: var(--spacing-sm);
+    color: var(--text-primary);
+}
+
+.plan-body p {
+    margin-bottom: var(--spacing-md);
+    color: var(--text-primary);
+}
+
+.plan-body li {
+    margin-bottom: var(--spacing-sm);
+    margin-left: var(--spacing-xl);
+    color: var(--text-primary);
+}
+
+.plan-body strong,
+.reb-container strong {
+    font-weight: bold;
+}
+
+.generate-info {
+    background: var(--bg-secondary);
+    padding: var(--spacing-xl);
+    border-radius: var(--border-radius-lg);
+    margin: var(--spacing-xl) 0;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.generate-info h4 {
+    margin-bottom: var(--spacing-md);
+    color: var(--color-primary);
+}
+
+.generate-info ul {
+    list-style: none;
+    padding: 0;
+}
+
+.generate-info li {
+    margin-bottom: var(--spacing-sm);
+    color: var(--text-primary);
+    font-size: var(--font-size-base);
+}
+
+@media print {
+    @page {
+        margin: 0;
+        /* Keep this at 0 to hide browser URL/Date headers */
+        size: auto;
+    }
+
+    /* Remove browser-injected header/footer (date, URL, page title) */
+    html {
+        height: auto !important;
+        background: white !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: visible !important;
+    }
+
+    body {
+        margin: 0 !important;
+        padding: 0 !important;
+        background: white !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        overflow: visible !important;
+        height: auto !important;
+    }
+
+    /* The "Golden Wrap" CSS for consistent margins */
+    .print-wrapper-table {
+        width: 100%;
+        border-collapse: collapse;
+        border: none !important;
+    }
+
+    .print-wrapper-table td {
+        border: none !important;
+        padding: 0 !important;
+    }
+
+    .print-header-spacer {
+        height: 1.5cm;
+        /* THIS IS THE TOP MARGIN ON EVERY PAGE */
+        background: transparent !important;
+        border: none !important;
+    }
+
+    .print-footer-spacer {
+        height: 1.5cm;
+        /* THIS IS THE BOTTOM MARGIN ON EVERY PAGE */
+        background: transparent !important;
+        border: none !important;
+    }
+
+    /* Fix for the "Black Line" at page breaks */
+    .table-container {
+        width: 100%;
+        border: none !important;
+    }
+
+    .reb-table {
+        border-top: 1px solid #000 !important;
+        /* Ensure first page has top border */
+    }
+
+    .lesson-plan-header,
+    .plan-header,
+    nav,
+    .no-print,
+    .btn {
+        display: none !important;
+    }
+
+    .plan-body {
+        padding: 0 !important;
+        margin: 0 !important;
+        width: 100% !important;
+    }
+
+    .reb-container {
+        padding: 0 !important;
+        margin: 0 !important;
+        width: 100% !important;
+        max-width: none !important;
+        box-shadow: none !important;
+        transform: none !important;
+    }
+
+    .reb-table {
+        width: 100% !important;
+        min-width: 0 !important;
+        table-layout: fixed !important;
+        border-collapse: collapse !important;
+        border: 1px solid #000 !important;
+    }
+
+    .reb-table th,
+    .reb-table td {
+        border: 1px solid #000 !important;
+        word-wrap: break-word !important;
+        overflow-wrap: break-word !important;
+        font-size: 10pt !important;
+        padding: 5px !important;
+        white-space: pre-wrap !important;
+    }
+
+    .timing-col {
+        width: 60px !important;
+    }
+
+    .competences-col {
+        width: auto !important;
+    }
+}
+
+@media (max-width: 1024px) {
+    .lesson-plan-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 24px;
+        padding: 24px;
+    }
+
+    .lesson-plan-header h1 {
+        font-size: 1.75rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .plan-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 16px;
+        padding: 20px;
+    }
+
+    .plan-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        width: 100%;
+    }
+
+    .plan-actions button {
+        width: 100%;
+        margin: 0;
+        justify-content: center;
+    }
+
+    .plan-body {
+        padding: 0;
+    }
+
+    .reb-container {
+        padding: 16px 0;
+    }
+
+    .reb-school-info {
+        font-size: 11pt;
+        padding: 0 16px;
+    }
+
+    /* Horizontal scroll indicator for mobile */
+    .table-container {
+        position: relative;
+    }
+
+    .table-container::after {
+        content: '↔ Scroll to view full table';
+        display: block;
+        text-align: center;
+        font-size: 11px;
+        color: var(--c-brand);
+        margin-top: 15px;
+        font-weight: 800;
+        text-transform: uppercase;
+        background: var(--c-brand-light);
+        padding: 8px;
+        border-radius: 8px;
+        letter-spacing: 0.05em;
+    }
+
+    .lesson-plan-content-card {
+        border-radius: 0 !important;
+        margin-left: -16px !important;
+        margin-right: -16px !important;
+    }
+
+    .plan-actions-container {
+        flex-direction: column !important;
+        gap: 12px !important;
+    }
+
+    .plan-actions-group {
+        width: 100% !important;
+        justify-content: space-between !important;
+    }
+}
+
+@media (max-width: 480px) {
+    .plan-actions {
+        grid-template-columns: 1fr;
+    }
+
+    .lesson-plan-header {
+        border-radius: 0;
+        margin-left: -16px;
+        margin-right: -16px;
+    }
+
+    .reb-school-info {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        text-align: left;
+    }
+}
+
+/* REB Official Tabular Styles */
+.reb-container {
+    font-family: 'Times New Roman', serif;
+    color: var(--text-main);
+    line-height: 1.4;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 20px;
+    background: var(--bg-card);
+}
+
+.reb-school-info-centered {
+    display: flex;
+    justify-content: center;
+    gap: 40px;
+    font-weight: bold;
+    font-size: 14pt;
+    margin-bottom: 25px;
+    padding: 0 20px;
+    color: var(--text-main);
+    flex-wrap: wrap;
+}
+
+.reb-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+    border: 1px solid var(--border-color);
+    min-width: 800px;
+}
+
+.reb-table th,
+.reb-table td {
+    border: 1px solid var(--border-color);
+    padding: 8px 12px;
+    vertical-align: top;
+    font-size: 11pt;
+    word-wrap: break-word;
+    white-space: pre-wrap;
+    color: var(--text-main);
+}
+
+.reb-table th {
+    background-color: var(--bg-main);
+    font-weight: bold;
+    text-align: center;
+}
+
+.reb-label {
+    background-color: var(--bg-main);
+    font-weight: bold;
+    width: 180px;
+    text-align: left !important;
+    padding: 0.5rem !important;
+}
+
+.activity-overview-cell {
+    padding: 15px !important;
+    font-style: italic;
+}
+
+.timing-col {
+    width: 80px;
+    text-align: center;
+    font-weight: bold;
+}
+
+.competences-col {
+    width: 700px;
+}
+
+.phase-name {
+    font-weight: bold;
+    font-size: 11pt;
+    margin-bottom: 5px;
+}
+
+.phase-inner-header {
+    font-weight: bold;
+    text-decoration: underline;
+    margin-bottom: 8px;
+    font-size: 11pt;
+}
+
+.bullet-list {
+    margin: 0;
+    padding-left: 20px;
+}
+
+.bullet-list li {
+    margin-bottom: 8px;
+    list-style-type: none;
+    position: relative;
+    padding-left: 15px;
+    white-space: pre-wrap;
+    color: var(--text-main);
+}
+
+.bullet-list li::before {
+    content: "•";
+    position: absolute;
+    left: 0;
+    font-weight: bold;
+}
+
+.self-evaluation-input {
+    transition: background-color 0.2s;
+}
+
+.self-evaluation-input:hover {
+    background-color: #fcfcfc !important;
+}
+
+.self-evaluation-input:focus {
+    background-color: white !important;
+}
+
+@media print {
+    .self-evaluation-input {
+        resize: none !important;
+        border: none !important;
+        padding: 0 !important;
+    }
+
+    body {
+        background: white !important;
+        color: #000 !important;
+    }
+
+    .reb-container {
+        padding: 0;
+        margin: 0;
+        max-width: 100%;
+        color: #000 !important;
+    }
+
+    .no-print, .sidebar, .header, .top-nav, header, nav {
+        display: none !important;
+    }
+
+    .reb-table {
+        border: 1px solid #000 !important;
+    }
+
+    .reb-table th, .reb-table td {
+        color: #000 !important;
+        border-color: #000 !important;
+    }
+
+    .phase-inner-header {
+        background: transparent !important;
+        padding: 0 !important;
+        color: #000 !important;
+        text-decoration: underline !important;
+    }
+
+    .bullet-list li {
+        color: #000 !important;
+    }
+
+    /* Force tables to show borders in Chrome/Edge */
+    * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+
+    /* Force table header to only appear on FIRST page */
+    thead {
+        display: table-row-group !important;
+    }
+}
+
+/* On-site Editor Styles */
+.reb-editable-input {
+    width: 100%;
+    min-height: 40px;
+    border: 1px solid transparent;
+    background: transparent;
+    font-family: inherit;
+    font-size: 11pt;
+    padding: 4px;
+    resize: vertical;
+    transition: all 0.2s;
+    border-radius: 4px;
+    display: block;
+    color: inherit;
+}
+
+.reb-editable-input:hover {
+    background: rgba(var(--c-brand-rgb), 0.05);
+    border-color: var(--c-border-soft);
+}
+
+.reb-editable-input:focus {
+    background: white;
+    border-color: var(--c-brand);
+    box-shadow: 0 0 0 3px rgba(var(--c-brand-rgb), 0.1);
+    outline: none;
+}
+
+.reb-editable-input-single {
+    width: 100%;
+    border: 1px solid transparent;
+    background: transparent;
+    font-family: inherit;
+    font-size: 11pt;
+    padding: 2px 4px;
+    border-radius: 4px;
+    transition: all 0.2s;
+    color: inherit;
+}
+
+.reb-editable-input-single:hover {
+    background: rgba(var(--c-brand-rgb), 0.05);
+}
+
+.reb-editable-input-single:focus {
+    background: white;
+    border-color: var(--c-brand);
+    outline: none;
+}
+
+.phase-inner-header {
+    font-weight: 800;
+    font-size: 0.75rem;
+    color: var(--c-brand-dark);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 8px;
+    background: var(--c-brand-light);
+    padding: 2px 8px;
+    display: inline-block;
+    border-radius: 4px;
+    text-decoration: none !important;
+}
+
+/* Lesson Switcher Styling */
+.lesson-switcher-box {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    background: var(--c-surface);
+    padding: 8px 20px;
+    border-radius: 20px;
+    border: 1px solid var(--c-border-soft);
+    box-shadow: var(--shadow-md);
+}
+.current-lesson-indicator {
+    display: flex;
+    flex-direction: column;
+}
+.current-lesson-name {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--c-brand);
+}
+.switcher-select-wrapper {
+    display: flex;
+    flex-direction: column;
+    border-left: 1px solid var(--c-border-soft);
+    padding-left: 20px;
+}
+.switcher-label {
+    font-size: 0.65rem;
+    font-weight: 800;
+    color: var(--c-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 2px;
+}
+.lesson-switcher-select {
+    background: transparent;
+    border: none;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--c-text-primary);
+    outline: none;
+    cursor: pointer;
+    max-width: 250px;
+    padding: 0;
+}
+.lesson-switcher-select:hover {
+    color: var(--c-brand);
+}
+
+@media (max-width: 850px) {
+    .lesson-switcher-box {
+        width: 100%;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+    .switcher-select-wrapper {
+        border-left: none;
+        border-top: 1px solid var(--c-border-soft);
+        padding-left: 0;
+        padding-top: 12px;
+        width: 100%;
+    }
+    .lesson-switcher-select {
+        max-width: none;
+    }
+}

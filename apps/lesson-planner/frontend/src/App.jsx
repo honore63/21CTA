@@ -1,5 +1,5 @@
 import { Suspense, lazy, useEffect, useState } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { Volume2, VolumeX } from 'lucide-react';
@@ -18,8 +18,10 @@ const PrivacyPolicyPage = lazy(() => import('./pages/PrivacyPolicyPage'));
 const NotFoundPage      = lazy(() => import('./pages/NotFoundPage'));
 const ContactUsPage     = lazy(() => import('./pages/ContactUsPage'));
 const DocsPage          = lazy(() => import('./pages/DocsPage'));
-const TeacherDashboard  = lazy(() => import('./pages/TeacherDashboard'));
-const AdminDashboard    = lazy(() => import('./pages/AdminDashboard'));
+const PublicLibraryPage = lazy(() => import('./pages/PublicLibraryPage'));
+const PublicSchoolsPage = lazy(() => import('./pages/PublicSchoolsPage'));
+const TeacherDashboard  = lazy(() => import('./dashboards/teacher/TeacherDashboard'));
+const AdminDashboard    = lazy(() => import('./dashboards/admin/AdminDashboard'));
 const ManageUsers       = lazy(() => import('./pages/ManageUsers'));
 const ManageSubjects    = lazy(() => import('./pages/ManageSubjects'));
 const UserDetails       = lazy(() => import('./pages/UserDetails'));
@@ -45,6 +47,35 @@ const AdminNotifications= lazy(() => import('./pages/admin/AdminNotifications'))
 const AdminSubscriptions = lazy(() => import('./pages/admin/AdminSubscriptions'));
 const BatchGeneratePage = lazy(() => import('./pages/BatchGeneratePage'));
 
+// Unified platform workspace
+const PlatformLayout   = lazy(() => import('./platform/PlatformLayout'));
+const DashboardPage    = lazy(() => import('./platform/pages/DashboardPage'));
+const MarksPage        = lazy(() => import('./platform/pages/MarksPage'));
+const AttendancePage   = lazy(() => import('./platform/pages/AttendancePage'));
+const TimetablePage    = lazy(() => import('./platform/pages/TimetablePage'));
+const LibraryPage      = lazy(() => import('./platform/pages/LibraryPage'));
+const CpdPage          = lazy(() => import('./platform/pages/CpdPage'));
+const ReportsPage      = lazy(() => import('./platform/pages/ReportsPage'));
+const NotificationsPage= lazy(() => import('./platform/pages/NotificationsPage'));
+const UsersPage        = lazy(() => import('./platform/pages/UsersPage'));
+const SchoolPage       = lazy(() => import('./platform/pages/SchoolPage'));
+const SchoolsPage      = lazy(() => import('./platform/pages/SchoolsPage'));
+const RegistrationsPage= lazy(() => import('./platform/pages/RegistrationsPage'));
+const SettingsPage     = lazy(() => import('./platform/pages/SettingsPage'));
+const AuditPage        = lazy(() => import('./platform/pages/AuditPage'));
+const PlatformPage     = lazy(() => import('./platform/pages/PlatformPage'));
+const AiAssistantPage  = lazy(() => import('./platform/pages/AiAssistantPage'));
+const PublicRegisterPage = lazy(() => import('./platform/PublicRegisterPage'));
+const StudentsPage     = lazy(() => import('./platform/pages/ResourcePages').then((m) => ({ default: m.StudentsPage })));
+const TeachersPage     = lazy(() => import('./platform/pages/ResourcePages').then((m) => ({ default: m.TeachersPage })));
+const PlatformClassesPage = lazy(() => import('./platform/pages/ResourcePages').then((m) => ({ default: m.ClassesPage })));
+const SubjectsPage     = lazy(() => import('./platform/pages/ResourcePages').then((m) => ({ default: m.SubjectsPage })));
+const AssessmentPage   = lazy(() => import('./platform/pages/ResourcePages').then((m) => ({ default: m.AssessmentPage })));
+const DiaryPage        = lazy(() => import('./platform/pages/ResourcePages').then((m) => ({ default: m.DiaryPage })));
+const LessonPlannerPage= lazy(() => import('./platform/pages/ResourcePages').then((m) => ({ default: m.LessonPlannerPage })));
+
+import { PlatformProvider, usePlatform } from './platform/PlatformContext';
+
 
 import AIAssistant from './components/AIAssistant';
 import Footer from './components/Footer';
@@ -68,6 +99,22 @@ const ProtectedRoute = ({ children, adminOnly = false }) => {
   return children;
 };
 
+/* Unified platform guard: waits for /platform/me before rendering the shell. */
+const PlatformGuard = ({ children }) => {
+  const { ready, loading, user } = usePlatform();
+  if (loading || !ready) return <PageLoader />;
+  if (!user) return <Navigate to="/login" replace />;
+  return children;
+};
+
+const PlatformWorkspace = () => (
+  <PlatformProvider>
+    <PlatformGuard>
+      <PlatformLayout />
+    </PlatformGuard>
+  </PlatformProvider>
+);
+
 function App() {
   const { isAuthenticated, isAdmin } = useAuth();
   return (
@@ -81,6 +128,8 @@ function App() {
 
 function AppInner({ isAuthenticated, isAdmin }) {
   const { user } = useAuth();
+  const location = useLocation();
+  const isPlatformRoute = location.pathname.startsWith('/app');
   useVisitorTracker();
 
   // --- MAINTENANCE MODE LOGIC ---
@@ -263,21 +312,30 @@ function AppInner({ isAuthenticated, isAdmin }) {
       </button>
 
       <Suspense fallback={<PageLoader />}>
-        {isAuthenticated && <AIAssistant />}
+        {isAuthenticated && !isPlatformRoute && <AIAssistant />}
 
         <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
           <main id="main-content" style={{ flex: '1 0 auto' }}>
             <Routes>
               {/* Public routes */}
               <Route path="/" element={<LandingPage />} />
-              <Route path="/login"    element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <LoginPage />} />
-              <Route path="/register" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <RegisterPage />} />
+              <Route path="/login"    element={isAuthenticated ? <Navigate to="/app/dashboard" replace /> : <LoginPage />} />
+              <Route path="/register" element={isAuthenticated ? <Navigate to="/app/dashboard" replace /> : <RegisterPage />} />
+              <Route path="/signup"   element={isAuthenticated ? <Navigate to="/app/dashboard" replace /> : <PublicRegisterPage />} />
               <Route path="/about-us" element={<AboutUsPage />} />
               <Route path="/faq"      element={<FAQPage />} />
               <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
               <Route path="/contact"  element={<ContactUsPage />} />
               <Route path="/pricing"  element={<PricingPage />} />
               <Route path="/docs"     element={<DocsPage />} />
+              <Route path="/library" element={<PublicLibraryPage />} />
+              <Route path="/library/resources" element={<PublicLibraryPage view="browse" />} />
+              <Route path="/library/resources/:slug" element={<PublicLibraryPage view="detail" />} />
+              <Route path="/library/preview/:id" element={<PublicLibraryPage view="preview" />} />
+              <Route path="/library/about" element={<PublicLibraryPage view="about" />} />
+              <Route path="/library/contribute" element={<PublicLibraryPage view="contribute" />} />
+              <Route path="/schools" element={<PublicSchoolsPage />} />
+              <Route path="/schools/:slug/*" element={<PublicSchoolsPage />} />
               <Route path="/auth/success"     element={<AuthSuccess />} />
               <Route path="/forgot-password"  element={<ForgotPasswordPage />} />
               <Route path="/reset-password"   element={<ResetPasswordPage />} />
@@ -345,6 +403,36 @@ function AppInner({ isAuthenticated, isAdmin }) {
               <Route path="/admin/notifications" element={
                 <ProtectedRoute adminOnly><DashboardLayout><AdminNotifications /></DashboardLayout></ProtectedRoute>
               }/>
+
+              {/* Unified platform workspace */}
+              <Route path="/app" element={<PlatformWorkspace />}>
+                <Route index element={<Navigate to="/app/dashboard" replace />} />
+                <Route path="dashboard" element={<DashboardPage />} />
+                <Route path="students" element={<StudentsPage />} />
+                <Route path="teachers" element={<TeachersPage />} />
+                <Route path="classes" element={<PlatformClassesPage />} />
+                <Route path="subjects" element={<SubjectsPage />} />
+                <Route path="lesson-planner" element={<LessonPlannerPage />} />
+                <Route path="marks" element={<MarksPage />} />
+                <Route path="assessment" element={<AssessmentPage />} />
+                <Route path="timetable" element={<TimetablePage />} />
+                <Route path="attendance" element={<AttendancePage />} />
+                <Route path="diary" element={<DiaryPage />} />
+                <Route path="library" element={<LibraryPage />} />
+                <Route path="cpd" element={<CpdPage />} />
+                <Route path="ai-assistant" element={<AiAssistantPage />} />
+                <Route path="notifications" element={<NotificationsPage />} />
+                <Route path="reports" element={<ReportsPage />} />
+                <Route path="school" element={<SchoolPage />} />
+                <Route path="schools" element={<SchoolsPage />} />
+                <Route path="users" element={<UsersPage />} />
+                <Route path="registrations" element={<RegistrationsPage />} />
+                <Route path="modules" element={<PlatformPage />} />
+                <Route path="platform" element={<PlatformPage />} />
+                <Route path="audit" element={<AuditPage />} />
+                <Route path="settings" element={<SettingsPage />} />
+                <Route path="*" element={<Navigate to="/app/dashboard" replace />} />
+              </Route>
 
               <Route path="*" element={<NotFoundPage />} />
             </Routes>

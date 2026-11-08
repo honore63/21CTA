@@ -2,19 +2,19 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const { pool } = require('../config/database');
 const { generateToken } = require('../config/jwt');
-const { sendWelcomeEmail, sendPasswordResetEmail, sendAdminSecurityAlert } = require('../services/emailService');
+const { sendWelcomeEmail, sendPasswordResetEmail } = require('../services/emailService');
+const { loadPlatformContext, writeAuditLog } = require('../services/platformService');
 
 /**
  * Authentication Controller
  */
 
-// Register new user
+// Register new user - public self-registration goes through school approval.
+// No account is created until a school administrator approves the request.
 exports.register = async (req, res, next) => {
     try {
-        const { full_name, email, phone_number, password, role, school_name, fingerprint } = req.body;
-        const ip_address = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+        const { full_name, email, phone_number, password, role, school_name, school_id, message } = req.body;
 
-        // Validation
         if (!full_name || !email || !phone_number || !password) {
             return res.status(400).json({
                 success: false,
@@ -22,95 +22,92 @@ exports.register = async (req, res, next) => {
             });
         }
 
-        // Validate role - Admin registration is blocked to ensure only one admin exists
-        if (role === 'admin') {
-            return res.status(403).json({
-                success: false,
-                message: 'Admin registration is not allowed. Please register as a teacher.'
-            });
+        const emailAddress = String(email).trim().toLowerCase();
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailAddress)) {
+            return res.status(400).json({ success: false, message: 'Please provide a valid email address.' });
+        }
+        if (String(password).length < 8) {
+            return res.status(400).json({ success: false, message: 'Password must be at least 8 characters long.' });
         }
 
-        if (role && role !== 'teacher') {
+        const requestedRole = role || 'teacher';
+        const publicRoles = ['teacher', 'student', 'parent', 'librarian', 'secretary', 'accountant',
+            'ict_admin', 'exam_officer', 'hod', 'cpd_coordinator', 'staff'];
+        if (!publicRoles.includes(requestedRole)) {
             return res.status(400).json({
                 success: false,
-                message: 'Invalid role. Must be teacher'
+                message: 'That role cannot be requested through public registration.'
             });
         }
 
-        // Check if user already exists (email or phone)
+        // Resolve the school either by id or by exact name.
+        let school = null;
+        if (school_id) {
+            const [rows] = await pool.query(
+                "SELECT id, name FROM schools WHERE id = ? AND status = 'active'", [school_id]
+            );
+            school = rows[0] || null;
+        } else if (school_name) {
+            const [rows] = await pool.query(
+                "SELECT id, name FROM schools WHERE name = ? AND status = 'active' LIMIT 1", [school_name.trim()]
+            );
+            school = rows[0] || null;
+        }
+        if (!school) {
+            return res.status(400).json({
+                success: false,
+                message: 'Select an active school. If your school is not listed, ask it to register on the platform first.'
+            });
+        }
+
         const [existingUsers] = await pool.query(
-            'SELECT id, email, phone_number FROM users WHERE email = ? OR phone_number = ?',
-            [email, phone_number]
+            'SELECT id FROM users WHERE email = ? OR (phone_number IS NOT NULL AND phone_number = ?) LIMIT 1',
+            [emailAddress, phone_number]
         );
-
         if (existingUsers.length > 0) {
-            const existingUser = existingUsers[0];
-            const field = existingUser.email === email ? 'email' : 'phone number';
-            return res.status(400).json({
-                success: false,
-                message: `User with this ${field} already exists`
-            });
+            return res.status(409).json({ success: false, message: 'An account with this email or phone number already exists.' });
         }
 
-        // Check for multiple accounts on same device
-        if (fingerprint) {
-            const [deviceUsers] = await pool.query(
-                'SELECT id, email FROM users WHERE fingerprint = ?',
-                [fingerprint]
-            );
-            if (deviceUsers.length > 0) {
-                // Alert admin in background
-                sendAdminSecurityAlert(deviceUsers[0], email, fingerprint, ip_address).catch(() => {});
-                return res.status(403).json({
-                    success: false,
-                    message: 'Multiple accounts detected on this device. For security reasons, creating multiple accounts is restricted. Please use your existing account or contact support.'
-                });
-            }
+        const [existingRequests] = await pool.query(
+            "SELECT id FROM registration_requests WHERE request_type='user' AND status='pending' AND email = ? LIMIT 1",
+            [emailAddress]
+        );
+        if (existingRequests.length > 0) {
+            return res.status(409).json({ success: false, message: 'A registration request for this email is already awaiting approval.' });
         }
 
-        // Hash password
-        const salt = await bcrypt.genSalt(10);
-        const password_hash = await bcrypt.hash(password, salt);
-
-        // Insert user
         const [result] = await pool.query(
-            `INSERT INTO users (full_name, email, phone_number, password_hash, role, school_name, fingerprint, last_ip) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-            [full_name, email, phone_number, password_hash, role || 'teacher', school_name || null, fingerprint || null, ip_address]
+            `INSERT INTO registration_requests
+             (request_type, school_id, school_name, contact_name, email, phone, role_code, message, status)
+             VALUES ('user', ?, ?, ?, ?, ?, ?, ?, 'pending')`,
+            [school.id, school.name, String(full_name).trim(), emailAddress, phone_number, requestedRole, message || null]
         );
 
-        // Link device
-        if (fingerprint) {
-            await pool.query(
-                'INSERT INTO user_devices (user_id, fingerprint, ip_address) VALUES (?, ?, ?)',
-                [result.insertId, fingerprint, ip_address]
-            );
-        }
-
-        // Generate token
-        const token = generateToken({
-            id: result.insertId,
-            email,
-            role: role || 'teacher'
+        await writeAuditLog({
+            action: 'registration.user.request', module: 'registrations', entity: 'registration_request',
+            entityId: result.insertId, details: { email: emailAddress, role: requestedRole, school_id: school.id }, req
         });
 
-        // Send welcome email in background (non-blocking)
-        sendWelcomeEmail({ full_name, email, school_name }).catch(() => {});
+        // Let the school's administrators know a request is waiting.
+        const [admins] = await pool.query(
+            `SELECT DISTINCT m.user_id FROM school_memberships m
+             JOIN roles r ON r.id = m.role_id
+             WHERE m.school_id = ? AND m.status = 'active' AND r.code IN ('school_admin','headteacher')
+             LIMIT 20`,
+            [school.id]
+        );
+        await Promise.all(admins.map((admin) => pool.query(
+            `INSERT INTO platform_notifications (user_id, school_id, title, message, type, link)
+             VALUES (?, ?, 'New registration request', ?, 'registrations', '/app/registrations')`,
+            [admin.user_id, school.id, `${full_name} (${emailAddress}) requested the ${requestedRole} role.`]
+        ).catch(() => {})));
+
+        sendWelcomeEmail({ full_name, email: emailAddress, school_name: school.name }).catch(() => {});
 
         res.status(201).json({
             success: true,
-            message: 'User registered successfully',
-            data: {
-                user: {
-                    id: result.insertId,
-                    full_name,
-                    email,
-                    phone_number,
-                    role: role || 'teacher',
-                    school_name
-                },
-                token
-            }
+            message: 'Registration submitted. Your school administrator must approve your account before you can sign in.',
+            data: { request_id: result.insertId, status: 'pending', school: school.name }
         });
     } catch (error) {
         next(error);
@@ -120,8 +117,7 @@ exports.register = async (req, res, next) => {
 // Login user
 exports.login = async (req, res, next) => {
     try {
-        const { identifier, password, fingerprint } = req.body; // identifier can be email or phone
-        const ip_address = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+        const { identifier, password } = req.body; // identifier can be email or phone
 
         // Validation
         if (!identifier || !password) {
@@ -155,6 +151,12 @@ exports.login = async (req, res, next) => {
         }
 
         // Check password
+        if (!user.password_hash) {
+            return res.status(401).json({
+                success: false,
+                message: 'This account uses Google sign-in. Please continue with Google.'
+            });
+        }
         const isPasswordValid = await bcrypt.compare(password, user.password_hash);
 
         if (!isPasswordValid) {
@@ -164,24 +166,58 @@ exports.login = async (req, res, next) => {
             });
         }
 
-        // Update device/ip info
-        await pool.query(
-            'UPDATE users SET last_ip = ?, fingerprint = COALESCE(fingerprint, ?) WHERE id = ?',
-            [ip_address, fingerprint || null, user.id]
-        );
-
-        if (fingerprint) {
-            await pool.query(
-                'INSERT INTO user_devices (user_id, fingerprint, ip_address) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE ip_address = VALUES(ip_address), last_login = CURRENT_TIMESTAMP',
-                [user.id, fingerprint, ip_address]
-            );
+        // Resolve multi-school platform context (roles, permissions, modules).
+        const ctx = await loadPlatformContext(user.id);
+        if (!ctx) {
+            return res.status(401).json({ success: false, message: 'Account not found.' });
         }
+
+        if (!ctx.isSuperAdmin && ctx.allowedSchoolIds.length === 0) {
+            if (ctx.pendingMembership) {
+                return res.status(403).json({
+                    success: false,
+                    code: 'PENDING_APPROVAL',
+                    message: 'Your school membership is awaiting administrator approval.'
+                });
+            }
+            return res.status(403).json({
+                success: false,
+                code: 'NO_SCHOOL',
+                message: 'Your account is not linked to an active school. Please contact your school administrator.'
+            });
+        }
+
+        await pool.query('UPDATE users SET last_login_at = NOW() WHERE id = ?', [user.id]);
+
+        const [schoolRows] = ctx.isSuperAdmin
+            ? await pool.query(
+                "SELECT id, name, code, district, province, logo_url, status, subscription_plan FROM schools WHERE status <> 'rejected' ORDER BY name"
+            )
+            : [[...new Map(ctx.activeMemberships.map((m) => [m.school_id, {
+                id: m.school_id, name: m.school_name, code: m.school_code, district: m.district,
+                province: m.province, logo_url: m.logo_url, status: m.school_status,
+                subscription_plan: m.subscription_plan
+            }])).values()]];
+
+        const currentSchool = ctx.schoolId
+            ? schoolRows.find((s) => s.id === ctx.schoolId) || null
+            : null;
+
+        const [unreadRows] = await pool.query(
+            'SELECT COUNT(*) AS count FROM platform_notifications WHERE user_id = ? AND is_read = 0',
+            [user.id]
+        );
 
         // Generate token
         const token = generateToken({
             id: user.id,
             email: user.email,
-            role: user.role
+            role: ctx.primaryRole
+        });
+
+        await writeAuditLog({
+            userId: user.id, schoolId: ctx.schoolId, action: 'login', module: 'auth',
+            entity: 'user', entityId: user.id, details: { role: ctx.primaryRole }, req
         });
 
         res.json({
@@ -193,10 +229,27 @@ exports.login = async (req, res, next) => {
                     full_name: user.full_name,
                     email: user.email,
                     phone_number: user.phone_number,
-                    role: user.role,
-                    school_name: user.school_name
+                    role: ctx.primaryRole,
+                    school_name: currentSchool ? currentSchool.name : user.school_name,
+                    school_id: user.school_id,
+                    profile_photo: user.profile_photo,
+                    language: user.language || 'en',
+                    theme: user.theme || 'light',
+                    is_email_verified: Boolean(user.is_email_verified)
                 },
-                token
+                token,
+                platform: {
+                    is_super_admin: ctx.isSuperAdmin,
+                    primary_role: ctx.primaryRole,
+                    roles: [...ctx.roleCodes],
+                    permissions: [...ctx.permissions],
+                    school: currentSchool,
+                    schools: schoolRows,
+                    modules: ctx.modules,
+                    unread_notifications: unreadRows[0].count,
+                    language: user.language || 'en',
+                    theme: user.theme || 'light'
+                }
             }
         });
     } catch (error) {
@@ -207,12 +260,8 @@ exports.login = async (req, res, next) => {
 // Get current user profile
 exports.getProfile = async (req, res, next) => {
     try {
-        const [users] = await pool.query(
-            'SELECT id, full_name, email, phone_number, role, school_name, created_at FROM users WHERE id = ?',
-            [req.user.id]
-        );
-
-        if (users.length === 0) {
+        const ctx = await loadPlatformContext(req.user.id);
+        if (!ctx) {
             return res.status(404).json({
                 success: false,
                 message: 'User not found'
@@ -221,7 +270,19 @@ exports.getProfile = async (req, res, next) => {
 
         res.json({
             success: true,
-            data: users[0]
+            data: {
+                ...ctx.user,
+                primary_role: ctx.primaryRole,
+                roles: [...ctx.roleCodes],
+                permissions: [...ctx.permissions],
+                school_id: ctx.schoolId,
+                schools: ctx.activeMemberships.map((m) => ({
+                    id: m.school_id,
+                    name: m.school_name,
+                    code: m.school_code,
+                    role: m.role_code
+                }))
+            }
         });
     } catch (error) {
         next(error);
@@ -231,23 +292,54 @@ exports.getProfile = async (req, res, next) => {
 // Update user profile
 exports.updateProfile = async (req, res, next) => {
     try {
-        const { full_name, school_name, phone_number } = req.body;
+        const { full_name, school_name, phone_number, profile_photo, language, theme } = req.body;
         const updates = [];
         const values = [];
 
-        if (full_name) {
+        if (full_name !== undefined) {
+            if (!String(full_name).trim()) {
+                return res.status(400).json({ success: false, message: 'Full name cannot be empty.' });
+            }
             updates.push('full_name = ?');
-            values.push(full_name);
+            values.push(String(full_name).trim());
         }
 
-        if (phone_number) {
+        if (phone_number !== undefined) {
             updates.push('phone_number = ?');
-            values.push(phone_number);
+            values.push(phone_number ? String(phone_number).trim() : null);
         }
 
+        if (profile_photo !== undefined) {
+            updates.push('profile_photo = ?');
+            values.push(profile_photo || null);
+        }
+
+        if (language !== undefined) {
+            if (!['en', 'fr', 'rw', 'sw'].includes(language)) {
+                return res.status(400).json({ success: false, message: 'Unsupported language.' });
+            }
+            updates.push('language = ?');
+            values.push(language);
+        }
+
+        if (theme !== undefined) {
+            if (!['light', 'dark'].includes(theme)) {
+                return res.status(400).json({ success: false, message: 'Unsupported theme.' });
+            }
+            updates.push('theme = ?');
+            values.push(theme);
+        }
+
+        // Legacy onboarding: only users without a school membership may set a
+        // free-text school name. Platform memberships are managed by admins.
         if (school_name !== undefined) {
-            updates.push('school_name = ?');
-            values.push(school_name);
+            const [memberships] = await pool.query(
+                'SELECT id FROM school_memberships WHERE user_id = ? LIMIT 1', [req.user.id]
+            );
+            if (memberships.length === 0) {
+                updates.push('school_name = ?');
+                values.push(school_name || null);
+            }
         }
 
         if (updates.length === 0) {
@@ -264,18 +356,17 @@ exports.updateProfile = async (req, res, next) => {
             values
         );
 
-        // Get updated user
-        const [users] = await pool.query(
-            'SELECT id, full_name, email, phone_number, role, school_name, created_at FROM users WHERE id = ?',
-            [req.user.id]
-        );
+        const ctx = await loadPlatformContext(req.user.id);
 
         res.json({
             success: true,
             message: 'Profile updated successfully',
-            data: users[0]
+            data: ctx ? ctx.user : null
         });
     } catch (error) {
+        if (error.code === 'ER_DUP_ENTRY') {
+            return res.status(409).json({ success: false, message: 'That phone number is already in use.' });
+        }
         next(error);
     }
 };

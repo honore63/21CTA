@@ -1,0 +1,140 @@
+/* index.css — legacy overrides kept for backward compatibility */
+/* The design-system.css (imported in main.jsx) is the primary source of truth */
+
+/* Scrollbar styling */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: var(--c-surface-2); }
+::-webkit-scrollbar-thumb { background: var(--c-border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--c-text-muted); }
+
+/* Toast overrides */
+.Toastify__toast-container { z-index: 999999 !important; }
+.Toastify__toast { font-family: var(--font-body) !important; font-size: .875rem !important; border-radius: var(--r-md) !important; }
+.Toastify__toast--success { background: var(--c-success-bg) !important; color: var(--c-success) !important; }
+.Toastify__toast--error   { background: var(--c-error-bg) !important;   color: var(--c-error) !important; }
+.Toastify__toast--warning { background: var(--c-warning-bg) !important; color: var(--c-warning) !important; }
+.Toastify__toast--info    { background: var(--c-info-bg) !important;    color: var(--c-info) !important; }
+.Toastify__progress-bar   { background: var(--c-brand) !important; }
+
+/* react-markdown content styling */
+.markdown-content h1 { font-size: 1.4rem; font-weight: 700; margin: 1rem 0 .5rem; }
+.markdown-content h2 { font-size: 1.15rem; font-weight: 700; margin: .9rem 0 .4rem; }
+.markdown-content h3 { font-size: 1rem; font-weight: 600; margin: .8rem 0 .3rem; }
+.markdown-content p  { margin-bottom: .6rem; line-height: 1.7; }
+.markdown-content ul { padding-left: 1.5rem; margin-bottom: .6rem; }
+.markdown-content li { margin-bottom: .3rem; }
+.markdown-content strong { font-weight: 700; }
+.markdown-content table { width: 100%; border-collapse: collapse; margin-bottom: 1rem; }
+.markdown-content th, .markdown-content td { border: 1px solid var(--c-border); padding: .5rem .75rem; font-size: .85rem; }
+.markdown-content th { background: var(--c-surface-2); font-weight: 700; }
+
+/* Floating Global Accessibility Button */
+.global-accessibility-btn {
+    position: fixed;
+    bottom: 30px;
+    left: 30px;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: var(--c-surface);
+    color: var(--c-text-primary);
+    border: 1px solid var(--c-border);
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    /* safe-area-inset for notched phones */
+    bottom: max(30px, env(safe-area-inset-bottom, 30px));
+    left: max(30px, env(safe-area-inset-left, 30px));
+}
+
+.global-accessibility-btn:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+    border-color: var(--c-brand);
+    color: var(--c-brand);
+}
+
+.global-accessibility-btn.active {
+    background: var(--c-brand);
+    color: white;
+    border-color: var(--c-brand);
+    box-shadow: 0 4px 15px rgba(14, 165, 233, 0.4);
+}
+
+@media (max-width: 480px) {
+    .global-accessibility-btn {
+        width: 42px;
+        height: 42px;
+        bottom: max(20px, env(safe-area-inset-bottom, 20px));
+        left: max(16px, env(safe-area-inset-left, 16px));
+    }
+}
+
+/* Global Screen Reader Highlight Style */
+.screen-reader-highlight {
+    outline: 2px dashed #0ea5e9 !important;
+    outline-offset: 4px !important;
+    background-color: rgba(14, 165, 233, 0.08) !important;
+    transition: outline 0.15s ease, background-color 0.15s ease;
+    cursor: help !important;
+}
+
+/* Skip to content link - hidden by default, appears on focus */
+.skip-link {
+    position: absolute;
+    top: -40px;
+    left: 0;
+    background: var(--c-brand);
+    color: white;
+    padding: 8px 16px;
+    z-index: 10000;
+    font-size: .875rem;
+    font-weight: 600;
+    transition: top 0.3s ease-in-out;
+    border-radius: 0 0 var(--r-md) var(--r-md);
+}
+
+.skip-link:focus {
+    top: 0;
+}
+
+/* Enhanced focus styles for better visibility */
+*:focus-visible {
+    outline: 2px solid var(--c-brand) !important;
+    outline-offset: 2px !important;
+    border-radius: var(--r-sm) !important;
+}
+
+/* Also provide a fallback for browsers that don't support focus-visible */
+*:focus:not(:focus-visible) {
+    outline: none;
+}
+
+/* Accessibility Screen Reader Toggle Button */
+.nav-accessibility-toggle {
+    background: none;
+    border: none;
+    color: var(--c-text-secondary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+
+.nav-accessibility-toggle:hover {
+    color: var(--c-brand);
+    background: var(--c-surface-2);
+}
+
+.nav-accessibility-toggle.active {
+    color: var(--c-brand);
+    background: rgba(14, 165, 233, 0.15);
+}
+

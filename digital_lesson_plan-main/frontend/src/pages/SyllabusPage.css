@@ -1,0 +1,691 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   REB SYLLABUSES PAGE — RESPONSIVE & THEME-AWARE REDESIGN
+   Supports: Light, Dark, and System themes
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ────────────────────────────────────────────────────────────────────────────
+   1. HEADER SECTION
+   ────────────────────────────────────────────────────────────────────────────── */
+
+.syllabus-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: var(--sp-6);
+    margin-bottom: var(--sp-10);
+    flex-wrap: wrap;
+}
+
+.syllabus-header-content {
+    flex: 1;
+    min-width: 250px;
+}
+
+@media (max-width: 768px) {
+    .syllabus-header {
+        flex-direction: column;
+        gap: var(--sp-4);
+        margin-bottom: var(--sp-8);
+    }
+
+    .syllabus-header-content {
+        width: 100%;
+    }
+}
+
+/* Button styling */
+.btn-with-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--sp-2);
+    padding: var(--sp-3) var(--sp-6) !important;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+@media (max-width: 480px) {
+    .btn-with-icon {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .btn-with-icon span {
+        display: none;
+    }
+
+    .btn-with-icon {
+        padding: var(--sp-3) var(--sp-4) !important;
+    }
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+   2. SEARCH SECTION
+   ────────────────────────────────────────────────────────────────────────────── */
+
+.syllabus-search-section {
+    margin-bottom: var(--sp-8);
+}
+
+.search-input {
+    width: 100%;
+    padding: var(--sp-3) var(--sp-4) !important;
+    font-size: 0.9375rem !important;
+    background: var(--c-surface) !important;
+    border: 1px solid var(--c-border) !important;
+    color: var(--c-text-primary) !important;
+}
+
+.search-input::placeholder {
+    color: var(--c-text-muted);
+}
+
+.search-input:focus {
+    border-color: var(--c-brand) !important;
+    box-shadow: 0 0 0 3px rgba(26, 107, 90, 0.1);
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+   3. MAIN CONTENT GRID
+   ────────────────────────────────────────────────────────────────────────────── */
+
+.syllabus-content {
+    min-height: 400px;
+}
+
+.syllabuses-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: var(--sp-6);
+    animation: fadeInUp 0.3s ease;
+}
+
+@media (max-width: 1024px) {
+    .syllabuses-grid {
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: var(--sp-5);
+    }
+}
+
+@media (max-width: 768px) {
+    .syllabuses-grid {
+        grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+        gap: var(--sp-4);
+    }
+}
+
+@media (max-width: 480px) {
+    .syllabuses-grid {
+        grid-template-columns: 1fr;
+        gap: var(--sp-4);
+    }
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+   4. SYLLABUS CARD — MAIN COMPONENT
+   ────────────────────────────────────────────────────────────────────────────── */
+
+.syllabus-card {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: var(--sp-6);
+    background: var(--c-surface);
+    border: 1px solid var(--c-border);
+    border-radius: var(--r-lg);
+    transition: all var(--t-base);
+    box-shadow: var(--sh-xs);
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Card hover effect */
+.syllabus-card:hover {
+    border-color: var(--c-brand);
+    box-shadow: 0 12px 24px rgba(26, 107, 90, 0.12);
+    transform: translateY(-4px);
+}
+
+[data-theme="dark"] .syllabus-card:hover {
+    box-shadow: 0 12px 24px rgba(26, 107, 90, 0.2);
+}
+
+/* Skeleton card styling */
+.syllabus-card.skeleton-card {
+    pointer-events: none;
+    user-select: none;
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+   5. CARD HEADER
+   ────────────────────────────────────────────────────────────────────────────── */
+
+.syllabus-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: var(--sp-4);
+    gap: var(--sp-3);
+}
+
+.syllabus-icon-wrapper {
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--c-brand-light);
+    color: var(--c-brand);
+    border-radius: var(--r-md);
+    font-size: 1.25rem;
+    flex-shrink: 0;
+}
+
+[data-theme="dark"] .syllabus-icon-wrapper {
+    background: rgba(26, 107, 90, 0.15);
+    color: #4ade80;
+}
+
+.syllabus-card-actions {
+    display: flex;
+    gap: var(--sp-2);
+    opacity: 0;
+    transition: opacity var(--t-fast);
+}
+
+.syllabus-card:hover .syllabus-card-actions {
+    opacity: 1;
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+   6. ACTION BUTTONS
+   ────────────────────────────────────────────────────────────────────────────── */
+
+.card-action-btn {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--c-surface-2);
+    border: 1px solid var(--c-border);
+    border-radius: var(--r-md);
+    color: var(--c-text-secondary);
+    cursor: pointer;
+    transition: all var(--t-fast);
+    padding: 0;
+}
+
+.card-action-btn:hover {
+    background: var(--c-brand);
+    border-color: var(--c-brand);
+    color: white;
+    transform: scale(1.08);
+}
+
+.card-action-btn:active {
+    transform: scale(0.95);
+}
+
+.card-action-delete {
+    color: var(--c-error);
+}
+
+.card-action-delete:hover {
+    background: var(--c-error);
+    border-color: var(--c-error);
+    color: white;
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+   7. CARD BODY
+   ────────────────────────────────────────────────────────────────────────────── */
+
+.syllabus-card-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-3);
+}
+
+.syllabus-card-title {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: var(--c-text-primary);
+    line-height: 1.4;
+    word-break: break-word;
+    margin: 0;
+    letter-spacing: -0.01em;
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+   8. LEVEL BADGE
+   ────────────────────────────────────────────────────────────────────────────── */
+
+.syllabus-level-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-2);
+    padding: var(--sp-2) var(--sp-3);
+    background: var(--c-surface-2);
+    color: var(--badge-color, var(--c-brand));
+    border: 1px solid;
+    border-color: var(--badge-color, var(--c-brand));
+    border-radius: var(--r-md);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    width: fit-content;
+    transition: all var(--t-fast);
+}
+
+.syllabus-level-badge:hover {
+    background: var(--badge-color, var(--c-brand));
+    color: white;
+    border-color: var(--badge-color, var(--c-brand));
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+   9. STATUS BADGE
+   ────────────────────────────────────────────────────────────────────────────── */
+
+.syllabus-status-wrapper {
+    margin-top: auto;
+    padding-top: var(--sp-4);
+    border-top: 1px solid var(--c-border-soft);
+}
+
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-2);
+    padding: var(--sp-2) var(--sp-3);
+    border-radius: var(--r-md);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    transition: all var(--t-fast);
+}
+
+.status-badge.structured {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--c-success);
+    border: 1px solid var(--c-success);
+}
+
+.status-badge.structured:hover {
+    background: var(--c-success);
+    color: white;
+}
+
+.status-badge.raw {
+    background: rgba(217, 119, 6, 0.1);
+    color: var(--c-warning);
+    border: 1px solid var(--c-warning);
+}
+
+.status-badge.raw:hover {
+    background: var(--c-warning);
+    color: white;
+}
+
+.status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    display: inline-block;
+    background: currentColor;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+   10. CARD FOOTER
+   ────────────────────────────────────────────────────────────────────────────── */
+
+.syllabus-card-footer {
+    margin-top: var(--sp-3);
+    padding-top: var(--sp-3);
+    border-top: 1px solid var(--c-border-soft);
+}
+
+.sync-date {
+    font-size: 0.8125rem;
+    color: var(--c-text-muted);
+    margin: 0;
+    transition: color var(--t-fast);
+}
+
+.syllabus-card:hover .sync-date {
+    color: var(--c-text-secondary);
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+   11. EMPTY STATE
+   ────────────────────────────────────────────────────────────────────────────── */
+
+.empty-state-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--sp-16);
+    min-height: 400px;
+    text-align: center;
+    background: var(--c-surface);
+    border: 2px dashed var(--c-border);
+    border-radius: var(--r-lg);
+    color: var(--c-text-muted);
+}
+
+.empty-state-icon {
+    width: 80px;
+    height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--c-surface-2);
+    border-radius: var(--r-xl);
+    color: var(--c-text-secondary);
+    font-size: 2.5rem;
+    margin-bottom: var(--sp-6);
+}
+
+.empty-state-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--c-text-primary);
+    margin: var(--sp-4) 0 var(--sp-2);
+}
+
+.empty-state-text {
+    font-size: 1rem;
+    color: var(--c-text-secondary);
+    max-width: 400px;
+    margin: 0 auto var(--sp-6);
+    line-height: 1.6;
+}
+
+@media (max-width: 480px) {
+    .empty-state-container {
+        padding: var(--sp-8);
+        min-height: 300px;
+    }
+
+    .empty-state-icon {
+        width: 60px;
+        height: 60px;
+    }
+
+    .empty-state-title {
+        font-size: 1.25rem;
+    }
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+   12. MODAL — FILE UPLOAD SECTION
+   ────────────────────────────────────────────────────────────────────────────── */
+
+.modal-upload-section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-3);
+    padding: var(--sp-6);
+    background: var(--c-surface-2);
+    border: 2px dashed var(--c-border);
+    border-radius: var(--r-lg);
+    transition: all var(--t-base);
+}
+
+.modal-upload-section:hover {
+    background: var(--c-brand-light);
+    border-color: var(--c-brand);
+}
+
+[data-theme="dark"] .modal-upload-section {
+    background: rgba(26, 107, 90, 0.08);
+}
+
+.file-input {
+    display: none;
+}
+
+.file-input-label {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    gap: var(--sp-3);
+    padding: var(--sp-6);
+    border-radius: var(--r-md);
+    transition: all var(--t-fast);
+}
+
+.file-input:hover ~ .file-input-label,
+.file-input-label:hover {
+    background: rgba(26, 107, 90, 0.05);
+}
+
+.file-input-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--sp-2);
+    text-align: center;
+}
+
+.file-input-content svg {
+    color: var(--c-brand);
+    width: 32px;
+    height: 32px;
+}
+
+.file-input-text {
+    font-weight: 600;
+    color: var(--c-text-primary);
+    margin: 0;
+}
+
+.file-input-hint {
+    font-size: 0.8125rem;
+    color: var(--c-text-muted);
+    margin: 0;
+}
+
+.file-selected {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    padding: var(--sp-3) var(--sp-4);
+    background: var(--c-success-bg);
+    color: var(--c-success);
+    border-radius: var(--r-md);
+    font-size: 0.9rem;
+    font-weight: 500;
+    margin-top: var(--sp-3);
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+   13. MODAL — DIVIDER
+   ────────────────────────────────────────────────────────────────────────────── */
+
+.modal-divider {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: var(--sp-8) 0;
+    position: relative;
+    color: var(--c-text-muted);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.modal-divider::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: var(--c-border);
+}
+
+.modal-divider span {
+    position: relative;
+    background: var(--c-surface);
+    padding: 0 var(--sp-3);
+    z-index: 1;
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+   14. FORM ACTIONS
+   ────────────────────────────────────────────────────────────────────────────── */
+
+.form-actions {
+    display: flex;
+    gap: var(--sp-4);
+    margin-top: var(--sp-8);
+}
+
+.form-actions .btn {
+    flex: 1;
+}
+
+@media (max-width: 480px) {
+    .form-actions {
+        flex-direction: column;
+        gap: var(--sp-3);
+    }
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+   15. ANIMATIONS
+   ────────────────────────────────────────────────────────────────────────────── */
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+   16. DARK THEME ADJUSTMENTS
+   ────────────────────────────────────────────────────────────────────────────── */
+
+[data-theme="dark"] .syllabus-card {
+    background: var(--c-surface);
+    border-color: var(--c-border);
+}
+
+[data-theme="dark"] .empty-state-container {
+    background: var(--c-surface-2);
+}
+
+[data-theme="dark"] .modal-divider span {
+    background: var(--c-surface);
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+   17. ACCESSIBILITY
+   ────────────────────────────────────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+    .syllabus-card,
+    .card-action-btn,
+    .status-badge,
+    .syllabus-level-badge,
+    .status-dot {
+        transition: none;
+    }
+
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+    }
+}
+
+/* Focus visible for keyboard navigation */
+.card-action-btn:focus-visible,
+.syllabus-card:focus-visible {
+    outline: 2px solid var(--c-brand);
+    outline-offset: 2px;
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+   18. UTILITY HELPERS
+   ────────────────────────────────────────────────────────────────────────────── */
+
+.mt-6 {
+    margin-top: var(--sp-6);
+}
+
+.mb-6 {
+    margin-bottom: var(--sp-6);
+}
+
+.flex-1 {
+    flex: 1;
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+   19. RESPONSIVE TEXT ADJUSTMENTS
+   ────────────────────────────────────────────────────────────────────────────── */
+
+@media (max-width: 1440px) {
+    .syllabuses-grid {
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    }
+}
+
+@media (max-width: 768px) {
+    .workspace-title {
+        font-size: 1.75rem;
+    }
+
+    .workspace-subtitle {
+        font-size: 0.95rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .workspace-title {
+        font-size: 1.5rem;
+    }
+
+    .workspace-subtitle {
+        font-size: 0.875rem;
+    }
+
+    .syllabus-card-title {
+        font-size: 1rem;
+    }
+
+    .syllabus-level-badge {
+        font-size: 0.75rem;
+    }
+
+    .sync-date {
+        font-size: 0.75rem;
+    }
+}

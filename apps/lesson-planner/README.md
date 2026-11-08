@@ -53,7 +53,7 @@ The **Digital Lesson Plan** system is designed to revolutionize how teachers in 
 - API Keys for Gemini/Groq
 
 ### 2. Database Setup
-- Import `database/schema.sql` into your MySQL instance.
+- Import `../../database/schema/001_lesson_planner.sql` into your MySQL instance.
 
 ### 3. Backend & Frontend
 ```bash

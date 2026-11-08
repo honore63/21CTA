@@ -31,6 +31,7 @@ const visitorRoutes = require('./routes/visitorRoutes');
 const subscriptionRoutes = require('./routes/subscriptionRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
 const agentRoutes = require('./routes/agentRoutes');
+const platformRoutes = require('./routes/platformRoutes');
 
 // Initialize express app
 const app = express();
@@ -95,6 +96,7 @@ app.use('/api/visitors', visitorRoutes);
 app.use('/api/subscription', subscriptionRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/agent', agentRoutes);
+app.use('/api/platform', platformRoutes);
 
 // Health check route
 app.get('/api/health', (req, res) => {
@@ -197,7 +199,7 @@ const startServer = async () => {
             if (missingTables.length > 0) {
                 console.error('[ERROR] Database schema incomplete. Missing tables: ' + missingTables.join(', '));
                 console.error('   Automatic schema repair is DISABLED by design.');
-                console.error('   Import database/schema.sql explicitly, then restart.');
+                console.error('   Import database/schema/001_lesson_planner.sql explicitly, then restart.');
             } else if (users.length === 0) {
                 console.warn('[WARN] Seed user id=2 not found. No automatic repair will be attempted.');
             } else {

@@ -1,0 +1,368 @@
+/* --- AUTH PAGES — DESIGN SYSTEM ALIGNMENT --- */
+
+.auth-vibrant-layout {
+  min-height: 100vh;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--c-bg); /* Clean gray background */
+  position: relative;
+  padding: var(--sp-6);
+  font-family: var(--font-body);
+}
+
+/* Auth Card - Mimicking the Payment Modal */
+.auth-centered-card {
+  width: 100%;
+  max-width: 500px;
+  background: var(--c-surface);
+  border-radius: var(--r-xl);
+  padding: var(--sp-10);
+  box-shadow: var(--sh-xl);
+  border: 1px solid var(--c-border);
+  position: relative;
+  z-index: 10;
+  animation: scaleIn 0.25s both;
+}
+
+.card-header-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-8);
+}
+
+.card-header-logo img {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+}
+
+.card-header-logo span {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--c-text-primary);
+  letter-spacing: -0.02em;
+}
+
+/* Split Layout for Auth Cards (Login/Register) */
+.auth-split-card {
+  display: flex;
+  overflow: hidden;
+  padding: 0 !important;
+}
+
+.auth-split-brand {
+  background: var(--c-brand);
+  color: #fff;
+  padding: var(--sp-12);
+  width: 40%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.auth-split-form {
+  background: var(--c-surface);
+  padding: var(--sp-12);
+  width: 60%;
+}
+
+@media (max-width: 768px) {
+  .auth-split-card {
+    flex-direction: column;
+  }
+  .auth-split-brand {
+    width: 100%;
+    padding: var(--sp-8) var(--sp-6);
+    justify-content: center;
+    gap: var(--sp-6);
+  }
+  .auth-split-form {
+    width: 100%;
+    padding: var(--sp-8) var(--sp-6);
+  }
+}
+
+/* Stepper - Matching Payment Process */
+.premium-stepper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--sp-10);
+  position: relative;
+}
+
+.p-step {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex: 1;
+  position: relative;
+  z-index: 2;
+}
+
+.p-step-circle {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--c-surface-2);
+  color: var(--c-text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.75rem;
+  transition: all var(--t-base);
+  border: 1px solid var(--c-border);
+}
+
+.p-step-label {
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--c-text-muted);
+  white-space: nowrap;
+}
+
+.p-step-line {
+  flex: 1;
+  height: 1px;
+  background: var(--c-border);
+  margin: 0 var(--sp-2);
+  transition: background var(--t-slow);
+}
+
+.p-step.active .p-step-circle {
+  background: var(--c-brand);
+  color: #fff;
+  border-color: var(--c-brand);
+}
+
+.p-step.active .p-step-label {
+  color: var(--c-text-primary);
+  font-weight: 600;
+}
+
+.p-step.completed .p-step-circle {
+  background: var(--c-brand);
+  color: #fff;
+  border-color: var(--c-brand);
+}
+
+.p-step.completed .p-step-label {
+  color: var(--c-brand);
+}
+
+.p-step.completed + .p-step-line,
+.p-step.completed .p-step-line {
+  background: var(--c-brand);
+}
+
+/* Auth Titles */
+.auth-title-large {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--c-text-primary);
+  letter-spacing: -0.025em;
+  margin-bottom: var(--sp-2);
+}
+
+.auth-subtitle-soft {
+  color: var(--c-text-secondary);
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+/* Forms - Using design-system.css classes */
+.vibrant-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-5);
+}
+
+.vibrant-field label {
+  display: block;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--c-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: var(--sp-2);
+}
+
+.vibrant-input-group {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.vibrant-input-group .input-icon {
+  position: absolute;
+  left: var(--sp-4);
+  font-size: 1.1rem;
+  color: var(--c-text-muted);
+  transition: all var(--t-fast);
+}
+
+.vibrant-input-group input,
+.vibrant-input-group select,
+.vibrant-input-group textarea,
+.vibrant-input {
+  width: 100%;
+  padding: 11px 14px;
+  border: 1.5px solid var(--c-border);
+  border-radius: var(--r-md);
+  font-size: 0.9rem;
+  background: var(--c-surface);
+  color: var(--c-text-primary);
+  transition: all var(--t-fast);
+  appearance: none;
+}
+
+.vibrant-input-group input,
+.vibrant-input-group select,
+.vibrant-input-group textarea {
+  padding-left: 40px;
+}
+
+.vibrant-input-group input:focus,
+.vibrant-input-group select:focus,
+.vibrant-input-group textarea:focus,
+.vibrant-input:focus {
+  outline: none;
+  border-color: var(--c-brand);
+  box-shadow: 0 0 0 3px rgba(26, 107, 90, 0.12);
+}
+
+.vibrant-input-group input:focus + .input-icon {
+  color: var(--c-brand);
+}
+
+.vibrant-submit-btn {
+  width: 100%;
+  background: var(--c-brand);
+  color: #fff;
+  padding: 12px;
+  border-radius: var(--r-md);
+  font-size: 0.9rem;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  transition: all var(--t-base);
+  box-shadow: 0 1px 2px rgba(26, 107, 90, 0.2);
+  margin-top: var(--sp-2);
+}
+
+.vibrant-submit-btn:hover {
+  background: var(--c-brand-dark);
+  transform: translateY(-1px);
+  box-shadow: var(--sh-md);
+}
+
+.vibrant-submit-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.vibrant-spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+/* Success State */
+.vibrant-info-box {
+  background: var(--c-brand-light);
+  border: 1px solid rgba(26, 107, 90, 0.2);
+  border-radius: var(--r-lg);
+  padding: var(--sp-5);
+  display: flex;
+  gap: var(--sp-4);
+  margin-bottom: var(--sp-6);
+  text-align: left;
+}
+
+.vibrant-info-icon {
+  font-size: 1.4rem;
+  color: var(--c-brand);
+  flex-shrink: 0;
+}
+
+.vibrant-info-text strong {
+  display: block;
+  color: var(--c-brand-dark);
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+
+.vibrant-info-text p {
+  font-size: 0.85rem;
+  color: var(--c-brand-mid);
+  margin: 0;
+}
+
+.vibrant-secondary-btn {
+  width: 100%;
+  background: var(--c-surface);
+  color: var(--c-text-primary);
+  padding: 11px;
+  border-radius: var(--r-md);
+  font-weight: 600;
+  border: 1px solid var(--c-border);
+  cursor: pointer;
+  transition: all var(--t-base);
+}
+
+.vibrant-secondary-btn:hover {
+  background: var(--c-surface-2);
+}
+
+/* Footer Links */
+.auth-card-footer {
+  margin-top: var(--sp-10);
+  padding-top: var(--sp-6);
+  border-top: 1px solid var(--c-border-soft);
+  display: flex;
+  justify-content: center;
+}
+
+.vibrant-back-link {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  color: var(--c-text-secondary);
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.875rem;
+  transition: all var(--t-base);
+  padding: 6px 12px;
+  border-radius: var(--r-sm);
+}
+
+.vibrant-back-link:hover {
+  color: var(--c-brand);
+  background: var(--c-brand-light);
+}
+
+.vibrant-error-icon {
+  width: 60px;
+  height: 60px;
+  background: var(--c-error-bg);
+  color: var(--c-error);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto var(--sp-4);
+  font-size: 1.8rem;
+}

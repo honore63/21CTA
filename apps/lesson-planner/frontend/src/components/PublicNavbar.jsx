@@ -53,6 +53,8 @@ const PublicNavbar = () => {
 
         {/* Desktop Links */}
         <div className="navbar-desktop-links">
+          <Link to="/schools" className="nav-link">Schools</Link>
+          <Link to="/library" className="nav-link">Library</Link>
           <Link to="/docs" className="nav-link">Docs</Link>
           <Link to="/about-us" className="nav-link">About</Link>
           <Link to="/contact" className="nav-link">Contact</Link>
@@ -112,6 +114,8 @@ const PublicNavbar = () => {
       {/* Mobile Drawer */}
       <div className={`navbar-mobile-drawer ${isMenuOpen ? 'open' : ''}`}>
         <div className="drawer-links">
+          <Link to="/schools" onClick={toggleMenu} className="drawer-link">School Directory</Link>
+          <Link to="/library" onClick={toggleMenu} className="drawer-link">Digital Library</Link>
           <Link to="/docs" onClick={toggleMenu} className="drawer-link">Documentation</Link>
           <Link to="/about-us" onClick={toggleMenu} className="drawer-link">About Us</Link>
           <Link to="/contact" onClick={toggleMenu} className="drawer-link">Contact Support</Link>

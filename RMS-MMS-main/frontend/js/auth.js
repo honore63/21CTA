@@ -1,0 +1,147 @@
+const Auth = {
+  currentUser: null,
+  userProfile: null,
+  teacherProfile: null,
+  parentLearner: null,
+
+  async signIn(email, password) {
+    if (!sbClient) {
+      throw new Error('Supabase is unavailable. Connect to the internet and try again.');
+    }
+    const { data, error } = await sbClient.auth.signInWithPassword({ email, password });
+
+    if (error) {
+      const msg = error.message || '';
+      console.error('LOGIN ERROR:', msg, '| status:', error.status, '| full:', JSON.stringify(error));
+
+      if (msg.includes('Email logins are disabled') || msg.includes('Email provider is disabled')) {
+        throw new Error('EMAIL_PROVIDER_DISABLED');
+      }
+      if (msg.includes('Email not confirmed')) {
+        throw new Error('EMAIL_NOT_CONFIRMED');
+      }
+      if (msg.includes('Invalid login') || msg.includes('invalid credentials') || msg.includes('User not found')) {
+        throw new Error('INVALID_CREDENTIALS');
+      }
+      throw new Error(msg);
+    }
+
+    if (data?.user) {
+      if (typeof DB !== 'undefined' && DB.clearUserCache) DB.clearUserCache(data.user.id);
+      await this.fetchOrCreateProfile(data.user);
+      if (typeof Router !== 'undefined' && Router.clearPrefetch) Router.clearPrefetch();
+    }
+    return data?.user;
+  },
+
+  async signOut() {
+    await sbClient.auth.signOut();
+    this.currentUser = null;
+    this.userProfile = null;
+    this.teacherProfile = null;
+    if (typeof DB !== 'undefined' && DB.clearUserCache) DB.clearUserCache();
+    if (typeof Router !== 'undefined' && Router.clearPrefetch) Router.clearPrefetch();
+  },
+
+  generateTeacherCode() {
+    // 11-digit numeric code (must match teachers_teacher_code_format: ^[0-9]{11}$)
+    return '541' + String(Math.floor(Math.random() * 100000000)).padStart(8, '0');
+  },
+
+  async ensureTeacherRow(data, authUser) {
+    // Auto-create the teachers row for a logged-in teacher that has a users row
+    // but no teachers row yet (unique 11-digit code, retries on collision).
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const code = this.generateTeacherCode();
+      const { error } = await sbClient.from('teachers').insert([{
+        user_id: authUser.id,
+        teacher_code: code,
+        full_name: data.full_name,
+        email: data.email || authUser.email,
+        status: 'active'
+      }]);
+      if (!error) return code;
+      if (typeof DB !== 'undefined') DB.invalidate('teachers');
+      if (!/duplicate|unique/i.test(error?.message || '')) break;
+    }
+    return null;
+  },
+
+  async fetchOrCreateProfile(authUser) {
+    let { data, error: selectError } = await sbClient.from('users').select('*').eq('id', authUser.id).maybeSingle();
+
+    if (selectError) {
+      this.currentUser = null;
+      return null;
+    }
+
+    if (!data) {
+      try {
+        const email = authUser.email.toLowerCase();
+        let role = 'teacher';
+        if (/^[0-9]{6,}@/.test(email)) role = 'parent';
+        else if (email.includes('dos') || email.includes('admin')) role = 'dos';
+        else if (email.includes('principal') || email.includes('headteacher') || email.includes('head-teacher')) role = 'principal';
+        else if (email.includes('parent') || email.includes('student') || email.includes('learner')) role = 'parent';
+        const name = authUser.email.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+
+        ({ data, error: selectError } = await sbClient.from('users').insert([{
+          id: authUser.id,
+          email: authUser.email,
+          full_name: name,
+          role: role,
+          status: 'active'
+        }]).select().single());
+
+        if (selectError) {
+          console.error('PROFILE CREATE ERROR:', selectError.message);
+          data = null;
+        } else if (typeof DB !== 'undefined') {
+          DB.invalidate('users');
+        }
+      } catch (err) {
+        console.error('PROFILE SYNC ERROR:', err.message);
+        data = null;
+      }
+    }
+
+    this.currentUser = data;
+
+    if (data && data.role === 'teacher') {
+      const { data: t, error: tErr } = await sbClient.from('teachers').select('*').eq('user_id', authUser.id).maybeSingle();
+      if (!t && !tErr) {
+        await this.ensureTeacherRow(data, authUser);
+        const { data: t2 } = await sbClient.from('teachers').select('*').eq('user_id', authUser.id).maybeSingle();
+        this.teacherProfile = t2 || null;
+        if (t2 && typeof DB !== 'undefined') DB.invalidate('teachers');
+      } else {
+        this.teacherProfile = t || null;
+      }
+    }
+
+    if (data && data.role === 'parent' && data.learner_id) {
+      const { data: l } = await sbClient.from('learners').select('*').eq('id', data.learner_id).maybeSingle();
+      this.parentLearner = l || null;
+    }
+    return data;
+  },
+
+  async init() {
+    if (!sbClient) return false;
+    const { data: { session } } = await sbClient.auth.getSession();
+    if (session?.user) {
+      if (typeof DB !== 'undefined' && DB.setUserScope) DB.setUserScope(session.user.id);
+      return Boolean(await this.fetchOrCreateProfile(session.user));
+    }
+    return false;
+  },
+
+  getRole() { return this.currentUser?.role || null; },
+  getTeacherId() { return this.teacherProfile?.id || null; },
+  getEducationLevel() { return this.currentUser?.education_level || null; },
+  getLearnerId() { return this.currentUser?.learner_id || null; },
+  isAdmin() { return this.getRole() === 'dos'; },
+  isTeacher() { return this.getRole() === 'teacher'; },
+  isPrincipal() { return this.getRole() === 'principal'; },
+  isParent() { return this.getRole() === 'parent'; }
+};

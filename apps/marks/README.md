@@ -84,6 +84,8 @@ School name, motto, address, phone, email, and logo URL are configurable at runt
 
 ## Project Structure
 
+Role dashboards are organized by role under `frontend/js/dashboards/`: DOS, headteacher, parent, and teacher. The PWA shell and script load order are documented in `frontend/index.html` and `frontend/sw.js`. The tree below is a legacy overview; its former dashboard entries under `pages/` now live under `dashboards/`.
+
 ```
 rms-eua/
 ├── frontend/                       # All client-side code (SPA)

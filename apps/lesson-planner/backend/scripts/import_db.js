@@ -19,7 +19,7 @@ const importDatabase = async () => {
 
     if (!process.argv.includes('--confirm')) {
         console.error('[ERROR] Refusing to import without --confirm.');
-        console.error('   This script executes database/schema.sql, which changes schema and data.');
+        console.error('   This script executes database/schema/001_lesson_planner.sql, which changes schema and data.');
         console.error('   Take and verify a backup first, then re-run with --confirm.');
         process.exit(1);
     }
@@ -40,7 +40,7 @@ const importDatabase = async () => {
         connection = await mysql.createConnection(config);
         console.log('[OK] Connected.');
 
-        const schemaPath = path.join(__dirname, '../../database/schema.sql');
+        const schemaPath = path.join(__dirname, '../../../../database/schema/001_lesson_planner.sql');
         console.log(`[INFO] Reading SQL file from: ${schemaPath}`);
         const sql = fs.readFileSync(schemaPath, 'utf8');
 
