@@ -1,0 +1,1254 @@
+let teachersSearch = '';
+let teachersStatusFilter = 'all';
+let teachersDepartmentFilter = 'all';
+let teachersClassFilter = 'all';
+let teachersSubjectFilter = 'all';
+
+function teacherLevelBadge(levels) {
+  if (!levels || levels.size === 0) return '<span class="badge badge-gray">Unassigned</span>';
+  return Array.from(levels).map(l =>
+    `<span class="badge ${l === 'Primary' ? 'badge-success' : 'badge-info'}">${Utils.escapeHtml(l)}</span>`
+  ).join(' ');
+}
+
+function getTeacherScopeCategories() {
+  if (Scope.isPrimary()) return ['Primary'];
+  if (Scope.isSecondary()) return ['Lower Secondary', 'Upper Secondary'];
+  return ['Primary', 'Lower Secondary', 'Upper Secondary'];
+}
+
+function teacherMatchesScope(classRecord) {
+  if (!classRecord) return false;
+  if (!Scope.isScoped()) return true;
+  const cat = EducationLevels.getCategory(classRecord);
+  return getTeacherScopeCategories().includes(cat);
+}
+
+function teacherSummaryProfile(t, teacherMeta = {}) {
+  const photoURL = t.profile_photo_url || t.photo_url || t.avatar_url || '';
+  const avatar = photoURL
+    ? `<img src="${Utils.escapeHtml(photoURL)}" alt="${Utils.escapeHtml(t.full_name || 'Teacher photo')}">`
+    : `<div class="teacher-avatar-placeholder">${Utils.escapeHtml((t.full_name || 'T').split(' ').map(s => s[0]).slice(0, 2).join('').toUpperCase() || 'T')}</div>`;
+
+  const classTags = (teacherMeta.classNames || []).length
+    ? teacherMeta.classNames.map(name => `<span class="teacher-chip">${Utils.escapeHtml(name)}</span>`).join('')
+    : '<span class="teacher-chip muted">No classes yet</span>';
+  const classTeacherTags = (teacherMeta.classTeacherNames || []).length
+    ? teacherMeta.classTeacherNames.map(name => `<span class="teacher-chip accent">${Utils.escapeHtml(name)}</span>`).join('')
+    : '<span class="teacher-chip muted">None assigned</span>';
+
+  const subjectTags = (teacherMeta.subjectNames || []).length
+    ? teacherMeta.subjectNames.map(name => `<span class="teacher-chip accent">${Utils.escapeHtml(name)}</span>`).join('')
+    : '<span class="teacher-chip muted">No subjects yet</span>';
+
+  const accountLevel = teacherEducationLabel(t.education_level);
+  const displayLevels = accountLevel === 'Primary & Secondary' ? ['Primary', 'Secondary']
+    : accountLevel === 'Primary' || accountLevel === 'Secondary' ? [accountLevel]
+      : (teacherMeta.levels || []);
+  const levels = displayLevels.length
+    ? Array.from(new Set(displayLevels)).map(level => `<span class="teacher-badge ${level === 'Primary' ? 'success' : 'info'}">${Utils.escapeHtml(level)}</span>`).join('')
+    : '<span class="teacher-badge neutral">Unassigned</span>';
+
+  const statusClass = (t.status || 'active') === 'active' ? 'success' : 'secondary';
+  const statusText = (t.status || 'active') === 'active' ? 'Active' : 'Inactive';
+
+  return `
+    <article class="teacher-card" data-teacher-id="${Utils.escapeHtml(String(t.id))}">
+      <div class="teacher-card-header">
+        <div class="teacher-avatar-wrap">${avatar}</div>
+        <div class="teacher-meta">
+          <h3>${Utils.escapeHtml(t.full_name || 'Unnamed Teacher')}</h3>
+          <div class="teacher-code">${Utils.escapeHtml(t.teacher_code || '—')}</div>
+          <span class="teacher-status ${statusClass}"><i data-lucide="${(t.status || 'active') === 'active' ? 'check-circle' : 'circle'}" style="width:12px;height:12px"></i> ${statusText}</span>
+        </div>
+      </div>
+
+      <div class="teacher-card-body">
+        <div class="teacher-academic-box">
+          <div class="teacher-section-header">
+            <span>Education Level</span>
+          </div>
+          <div class="teacher-badges">${levels}</div>
+
+          <div class="teacher-section-header"><span>Classes Assigned</span></div>
+          <div class="teacher-tags">${classTags}</div>
+
+          <div class="teacher-section-header"><span>Class Teacher Of</span></div>
+          <div class="teacher-tags">${classTeacherTags}</div>
+
+          <div class="teacher-section-header"><span>Subjects Assigned</span></div>
+          <div class="teacher-tags">${subjectTags}</div>
+        </div>
+      </div>
+
+      <div class="teacher-card-actions">
+        <button class="btn btn-sm btn-secondary teacher-view-btn" data-action="teacher-view" data-id="${Utils.escapeHtml(String(t.id))}" title="View more teacher details" aria-label="View more teacher details"><i data-lucide="eye"></i> View more</button>
+        <button class="btn btn-sm btn-outline" data-action="teacher-edit" data-id="${Utils.escapeHtml(String(t.id))}"><i data-lucide="pencil"></i> Edit</button>
+        <button class="btn btn-sm btn-secondary" data-action="teacher-assignments" data-id="${Utils.escapeHtml(String(t.id))}"><i data-lucide="link"></i> Manage Assignments</button>
+        <button class="btn btn-sm btn-danger" data-action="teacher-delete" data-id="${Utils.escapeHtml(String(t.id))}"><i data-lucide="trash-2"></i> Delete</button>
+      </div>
+    </article>
+  `;
+}
+
+async function renderTeachers() {
+  setHeader('Teachers', 'View and manage teacher profiles for the authorized education level');
+  setContent(Utils.loading());
+
+  let teachers;
+  let assignments;
+  let classes;
+  let subjects;
+  try {
+    [teachers, assignments, classes, subjects] = await Promise.all([
+      DB.query('teachers', '*', {}, { column: 'full_name' }),
+      DB.query('teacher_assignments', '*'),
+      DB.get('classes'),
+      DB.get('subjects')
+    ]);
+  } catch (e) {
+    console.error('TEACHER LIST ERROR:', e);
+    setContent(`<div class="alert alert-danger"><strong>Teachers could not be loaded.</strong><br>${Utils.escapeHtml(e.message || 'Database request failed')}</div>`);
+    return;
+  }
+
+  const classMap = new Map((classes || []).map(c => [String(c.id), c]));
+  const subjectMap = new Map((subjects || []).map(s => [String(s.id), s]));
+
+  const teacherMeta = new Map();
+  (assignments || []).forEach(a => {
+    const classRecord = classMap.get(String(a.class_id));
+    if (!classRecord || !teacherMatchesScope(classRecord)) return;
+    const teacherId = String(a.teacher_id);
+    if (!teacherMeta.has(teacherId)) {
+      teacherMeta.set(teacherId, { classNames: new Set(), subjectNames: new Set(), levels: new Set() });
+    }
+    const meta = teacherMeta.get(teacherId);
+    const category = EducationLevels.getCategory(classRecord);
+    const name = classRecord.name || classRecord.level || `Class ${classRecord.id}`;
+    meta.classNames.add(`${category} · ${name}`);
+    meta.levels.add(category);
+
+    if (a.subject_id) {
+      const subjectRecord = subjectMap.get(String(a.subject_id));
+      if (subjectRecord) meta.subjectNames.add(`${category} · ${subjectRecord.name || 'Subject'}`);
+    }
+  });
+  (classes || []).forEach(classRecord => {
+    if (!classRecord.class_teacher_id || !teacherMatchesScope(classRecord)) return;
+    const teacherId = String(classRecord.class_teacher_id);
+    if (!teacherMeta.has(teacherId)) {
+      teacherMeta.set(teacherId, { classNames: new Set(), subjectNames: new Set(), classTeacherNames: new Set(), levels: new Set() });
+    }
+    const meta = teacherMeta.get(teacherId);
+    if (!meta.classTeacherNames) meta.classTeacherNames = new Set();
+    meta.classTeacherNames.add(`${EducationLevels.getCategory(classRecord)} · ${classRecord.name || classRecord.level || `Class ${classRecord.id}`}`);
+    meta.levels.add(EducationLevels.getCategory(classRecord));
+  });
+
+  // Keep teachers with an in-scope assignment, plus unassigned teachers who
+  // can still be assigned. RLS remains the authoritative access boundary.
+  const assignmentsByTeacher = new Map();
+  (assignments || []).forEach(assignment => {
+    if (!assignment.class_id) return;
+    const key = String(assignment.teacher_id);
+    if (!assignmentsByTeacher.has(key)) assignmentsByTeacher.set(key, []);
+    assignmentsByTeacher.get(key).push(assignment);
+  });
+  const allowedTeachers = (teachers || []).filter(teacher => {
+    const ownAssignments = assignmentsByTeacher.get(String(teacher.id)) || [];
+    const hasInScopeClassTeacherClass = (classes || []).some(classRecord =>
+      String(classRecord.class_teacher_id || '') === String(teacher.id) && teacherMatchesScope(classRecord)
+    );
+    if (hasInScopeClassTeacherClass) return true;
+    return ownAssignments.length === 0 || ownAssignments.some(assignment => {
+      const classRecord = classMap.get(String(assignment.class_id));
+      return teacherMatchesScope(classRecord);
+    });
+  });
+
+  const filtered = allowedTeachers.filter(t => {
+    const meta = teacherMeta.get(String(t.id)) || { classNames: new Set(), subjectNames: new Set(), classTeacherNames: new Set(), levels: new Set() };
+    const classTeacherNames = meta.classTeacherNames || new Set();
+    const searchText = `${t.full_name || ''} ${t.teacher_code || ''} ${t.email || ''} ${t.phone || ''} ${Array.from(meta.classNames).join(' ')} ${Array.from(classTeacherNames).join(' ')} ${Array.from(meta.subjectNames).join(' ')} ${t.department || ''}`.toLowerCase();
+    const matchesSearch = !teachersSearch || searchText.includes(teachersSearch.toLowerCase());
+    const matchesStatus = teachersStatusFilter === 'all' || String(t.status || 'active') === teachersStatusFilter;
+    const matchesDepartment = teachersDepartmentFilter === 'all' || (t.department || '').toLowerCase() === teachersDepartmentFilter.toLowerCase();
+    const matchesClass = teachersClassFilter === 'all' || [...meta.classNames, ...classTeacherNames].some(name => name.toLowerCase().includes(teachersClassFilter.toLowerCase()));
+    const matchesSubject = teachersSubjectFilter === 'all' || Array.from(meta.subjectNames).some(name => name.toLowerCase().includes(teachersSubjectFilter.toLowerCase()));
+    return matchesSearch && matchesStatus && matchesDepartment && matchesClass && matchesSubject;
+  });
+
+  const departmentOptions = Array.from(new Set((teachers || []).map(t => (t.department || '').trim()).filter(Boolean))).sort();
+  const classOptions = Array.from(new Set((classes || []).filter(cls => teacherMatchesScope(cls)).map(cls => cls.name || cls.level || `Class ${cls.id}`))).sort();
+  const subjectOptions = Array.from(new Set((subjects || []).map(s => s.name || '').filter(Boolean))).sort();
+
+  const cards = filtered.map(t => {
+    const meta = teacherMeta.get(String(t.id)) || { classNames: new Set(), subjectNames: new Set(), levels: new Set() };
+    return teacherSummaryProfile(t, {
+      classNames: Array.from(meta.classNames).slice(0, 8),
+      classTeacherNames: Array.from(meta.classTeacherNames || []).slice(0, 8),
+      subjectNames: Array.from(meta.subjectNames).slice(0, 8),
+      levels: Array.from(meta.levels)
+    });
+  }).join('') || `<div class="card" style="padding:24px"><div class="empty-state"><i data-lucide="users" style="width:28px;height:28px"></i><p>No teachers found in your authorized education level.</p></div></div>`;
+
+  setContent(`
+    <style>
+      .teacher-directory { display: flex; flex-direction: column; gap: 20px; }
+      .teacher-toolbar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; background:#fff; border:1px solid var(--gray-200); border-radius:12px; padding:12px 14px; box-shadow:0 1px 8px rgba(15,23,42,.05); }
+      .teacher-search-wrap { position: relative; display: flex; align-items: center; min-width: 220px; flex: 1 1 280px; max-width: 420px; }
+      .teacher-search-wrap .search-icon { position: absolute; left: 12px; color: var(--gray-500); }
+      .teacher-search-wrap input { padding-left: 38px; border-radius:10px; }
+      .teacher-filters { display: grid; grid-template-columns: repeat(4, minmax(150px, 1fr)) auto; gap: 10px; align-items: center; flex: 1 1 100%; }
+      .teacher-filters .select-field { border-radius:10px; width: 100%; min-width: 0; }
+      .teacher-filters .btn { white-space: nowrap; }
+      .teacher-card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(310px, 1fr)); gap: 20px; align-items: stretch; }
+      .teacher-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 16px; box-shadow: 0 4px 16px rgba(15,23,42,.06), 0 1px 3px rgba(15,23,42,.04); padding: 0; display: flex; flex-direction: column; gap: 0; min-width: 0; height: 100%; overflow: hidden; transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease; }
+      .teacher-card:hover { transform: translateY(-3px); box-shadow: 0 10px 28px rgba(15,23,42,.10), 0 2px 8px rgba(15,23,42,.06); border-color: #dbeafe; }
+      .teacher-card-header { display: flex; flex-direction: column; gap: 0; padding: 0; border-bottom: none; min-width: 0; }
+      .teacher-avatar-wrap { width: 100%; height: auto; aspect-ratio: 16 / 9; border-radius: 0; overflow: hidden; border: none; border-bottom:1px solid #eef2f7; background: linear-gradient(180deg,#f8fafc 0%, #eef2ff 100%); flex-shrink: 0; position:relative; }
+      .teacher-avatar-wrap img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: center 30%; }
+      .teacher-avatar-placeholder { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg,#1e3a5f 0%, #2563eb 55%, #3b82f6 100%); color:#fff; font-size:32px; font-weight:800; letter-spacing:.04em; }
+      .teacher-avatar-wrap::after { content:""; position:absolute; inset:0; background:linear-gradient(180deg, transparent 55%, rgba(15,23,42,.06) 100%); pointer-events:none; }
+      .teacher-meta { min-width: 0; flex: 1; padding:14px 16px 12px; background:#fff; }
+      .teacher-meta h3 { margin: 0; font-size: 16px; line-height: 1.35; color: #0f172a; font-weight: 800; overflow-wrap:anywhere; letter-spacing:-.01em; }
+      .teacher-code { margin-top: 5px; font-size: 11px; color: #64748b; letter-spacing: 0.08em; font-weight:700; overflow-wrap:anywhere; text-transform:uppercase; }
+      .teacher-code::before { content:"ID • "; color:#94a3b8; letter-spacing:.08em; }
+      .teacher-status { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 800; margin-top: 10px; border:1px solid transparent; letter-spacing:.03em; }
+      .teacher-status.success { background: #ecfdf5; color: #047857; border-color:#a7f3d0; }
+      .teacher-status.secondary { background: #f1f5f9; color: #475569; border-color:#e2e8f0; }
+      .teacher-card-body { display: flex; flex-direction: column; gap: 12px; padding:14px 16px; background:#f8fafc; border-top:1px solid #f1f5f9; }
+      .teacher-info-list { display: grid; gap: 8px; }
+      .teacher-info-list div { display: grid; grid-template-columns: 92px minmax(0,1fr); gap: 8px; align-items: start; font-size: 12.5px; color: var(--gray-700); min-width: 0; }
+      .teacher-info-list div > span:last-child { min-width: 0; overflow-wrap:anywhere; word-break:break-word; }
+      .teacher-label { color: var(--gray-500); font-weight: 600; display: inline-flex; align-items: center; gap: 6px; }
+      .teacher-label i { width: 14px; height: 14px; }
+      .teacher-academic-box { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 10px; min-width: 0; box-shadow:0 1px 6px rgba(15,23,42,.04) inset; }
+      .teacher-section-header { font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.09em; color: #64748b; display:flex; align-items:center; gap:6px; }
+      .teacher-section-header::after { content:""; flex:1; height:1px; background:#eef2f7; margin-left:8px; }
+      .teacher-badges, .teacher-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+      .teacher-badge, .teacher-chip { display: inline-flex; align-items: center; justify-content: center; max-width:100%; padding: 5px 11px; border-radius: 999px; font-size: 11px; font-weight: 700; border: 1px solid transparent; overflow-wrap:anywhere; word-break:break-word; line-height:1.2; }
+      .teacher-badge.success { background: #ecfdf5; color: #065f46; border-color: #a7f3d0; }
+      .teacher-badge.info { background: #eff6ff; color: #1e40af; border-color: #bfdbfe; }
+      .teacher-badge.neutral { background: #f1f5f9; color: #475569; border-color:#e2e8f0; }
+      .teacher-chip { background: #eff6ff; color: #1e40af; border-color: #dbeafe; }
+      .teacher-chip.accent { background: #f5f3ff; color: #5b21b6; border-color: #ddd6fe; }
+      .teacher-chip.muted { background: #f8fafc; color: #64748b; border-color: #e2e8f0; border-style:dashed; }
+      .teacher-card-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: auto; padding:12px 14px 14px; background:#fff; border-top:1px solid #f1f5f9; }
+      .teacher-card-actions .btn { flex: 1 1 112px; min-width:0; justify-content:center; border-radius:10px; font-weight:700; font-size:12px; padding:8px 10px; }
+      @media (max-width: 1100px) {
+        .teacher-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      }
+      @media (max-width: 640px) {
+        .teacher-toolbar { align-items: stretch; }
+        .teacher-filters { width: 100%; grid-template-columns: 1fr; }
+        .teacher-filters > * { grid-column: 1 / -1; }
+        .teacher-info-list div { grid-template-columns: 1fr; gap: 4px; }
+      }
+    </style>
+    <div class="teacher-directory">
+      <div class="teacher-toolbar">
+        <div class="teacher-search-wrap">
+          <i class="search-icon" data-lucide="search" style="width:16px;height:16px"></i>
+          <input id="teachers-search-input" class="input-field" type="text" placeholder="Search teachers by name, ID, class, subject or department" value="${Utils.escapeHtml(teachersSearch)}">
+        </div>
+        <div class="teacher-filters">
+          <select id="teachers-status-filter" class="select-field">
+            <option value="all">All statuses</option>
+            <option value="active" ${teachersStatusFilter === 'active' ? 'selected' : ''}>Active</option>
+            <option value="inactive" ${teachersStatusFilter === 'inactive' ? 'selected' : ''}>Inactive</option>
+          </select>
+          <select id="teachers-dept-filter" class="select-field">
+            <option value="all">All departments</option>
+            ${departmentOptions.map(dep => `<option value="${Utils.escapeHtml(dep)}" ${teachersDepartmentFilter === dep ? 'selected' : ''}>${Utils.escapeHtml(dep)}</option>`).join('')}
+          </select>
+          <select id="teachers-class-filter" class="select-field">
+            <option value="all">All classes</option>
+            ${classOptions.map(c => `<option value="${Utils.escapeHtml(c)}" ${teachersClassFilter === c ? 'selected' : ''}>${Utils.escapeHtml(c)}</option>`).join('')}
+          </select>
+          <select id="teachers-subject-filter" class="select-field">
+            <option value="all">All subjects</option>
+            ${subjectOptions.map(s => `<option value="${Utils.escapeHtml(s)}" ${teachersSubjectFilter === s ? 'selected' : ''}>${Utils.escapeHtml(s)}</option>`).join('')}
+          </select>
+          <button id="teacher-add-btn" class="btn btn-primary"><i data-lucide="user-plus"></i> Add Teacher</button>
+        </div>
+      </div>
+      <div class="teacher-card-grid">${cards}</div>
+    </div>
+  `);
+
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+
+  const searchInput = document.getElementById('teachers-search-input');
+  if (searchInput) {
+    searchInput.addEventListener('input', (e) => {
+      teachersSearch = e.target.value.trim();
+      renderTeachers();
+    });
+  }
+
+  const statusFilter = document.getElementById('teachers-status-filter');
+  if (statusFilter) {
+    statusFilter.addEventListener('change', (e) => {
+      teachersStatusFilter = e.target.value;
+      renderTeachers();
+    });
+  }
+
+  const deptFilter = document.getElementById('teachers-dept-filter');
+  if (deptFilter) {
+    deptFilter.addEventListener('change', (e) => {
+      teachersDepartmentFilter = e.target.value;
+      renderTeachers();
+    });
+  }
+
+  const classFilter = document.getElementById('teachers-class-filter');
+  if (classFilter) {
+    classFilter.addEventListener('change', (e) => {
+      teachersClassFilter = e.target.value;
+      renderTeachers();
+    });
+  }
+
+  const subjectFilter = document.getElementById('teachers-subject-filter');
+  if (subjectFilter) {
+    subjectFilter.addEventListener('change', (e) => {
+      teachersSubjectFilter = e.target.value;
+      renderTeachers();
+    });
+  }
+
+  const addBtn = document.getElementById('teacher-add-btn');
+  if (addBtn) {
+    addBtn.addEventListener('click', teacherForm);
+  }
+
+  const root = document.getElementById('main-content');
+  if (root) {
+    root.querySelectorAll('[data-action="teacher-view"]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.dataset.id;
+        const teacher = (teachers || []).find(t => String(t.id) === String(id));
+        if (!teacher) return;
+        const meta = teacherMeta.get(String(id)) || { classNames: new Set(), subjectNames: new Set(), levels: new Set() };
+        teacherViewProfile(teacher, {
+          classNames: Array.from(meta.classNames),
+          classTeacherNames: Array.from(meta.classTeacherNames || []),
+          subjectNames: Array.from(meta.subjectNames),
+          levels: Array.from(meta.levels)
+        });
+      });
+    });
+
+    root.querySelectorAll('[data-action="teacher-edit"]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.dataset.id;
+        const teacher = (teachers || []).find(t => String(t.id) === String(id));
+        if (teacher) teacherEdit(teacher);
+      });
+    });
+
+    root.querySelectorAll('[data-action="teacher-delete"]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.dataset.id;
+        const teacher = (teachers || []).find(t => String(t.id) === String(id));
+        if (teacher) teacherDelete(teacher);
+      });
+    });
+
+    root.querySelectorAll('[data-action="teacher-assignments"]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.dataset.id;
+        const teacher = (teachers || []).find(t => String(t.id) === String(id));
+        if (teacher) {
+          const teacherName = Utils.escapeHtml(teacher.full_name || 'Teacher');
+          Modal.show(`Assignments for ${teacherName}`, `
+            <div class="alert alert-info"><i data-lucide="info"></i> Use the assignments module to manage this teacher's class and subject links.</div>
+            <div class="card" style="margin-top:12px; padding:14px; background:var(--gray-50)">
+              <p class="text-sm text-muted" style="margin:0">Teacher: <strong>${teacherName}</strong></p>
+            </div>`, `<button class="btn btn-secondary" data-close-modal="true">Close</button>
+             <button class="btn btn-primary" id="teacher-assignments-btn"><i data-lucide="link"></i> Open Assignments</button>`);
+          if (typeof lucide !== 'undefined') lucide.createIcons();
+          document.querySelector('[data-close-modal="true"]')?.addEventListener('click', () => Modal.close());
+          document.getElementById('teacher-assignments-btn')?.addEventListener('click', () => Router.go('admin/assignments'));
+        }
+      });
+    });
+  }
+}
+
+function teacherViewProfile(t, teacherMeta = {}) {
+  const classTags = (teacherMeta.classNames || []).length
+    ? teacherMeta.classNames.map(n => `<span class="teacher-chip">${Utils.escapeHtml(n)}</span>`).join('')
+    : '<span class="teacher-chip muted">No classes yet</span>';
+  const subjectTags = (teacherMeta.subjectNames || []).length
+    ? teacherMeta.subjectNames.map(n => `<span class="teacher-chip accent">${Utils.escapeHtml(n)}</span>`).join('')
+    : '<span class="teacher-chip muted">No subjects yet</span>';
+  const classTeacherTags = (teacherMeta.classTeacherNames || []).length
+    ? teacherMeta.classTeacherNames.map(n => `<span class="teacher-chip accent">${Utils.escapeHtml(n)}</span>`).join('')
+    : '<span class="teacher-chip muted">None assigned</span>';
+  const accountLevel = teacherEducationLabel(t.education_level);
+  const displayLevels = accountLevel === 'Primary & Secondary' ? ['Primary', 'Secondary']
+    : accountLevel === 'Primary' || accountLevel === 'Secondary' ? [accountLevel]
+      : (teacherMeta.levels || []);
+  const levels = displayLevels.length
+    ? Array.from(new Set(displayLevels)).map(level => `<span class="teacher-badge ${level === 'Primary' ? 'success' : 'info'}">${Utils.escapeHtml(level)}</span>`).join('')
+    : '<span class="teacher-badge neutral">Unassigned</span>';
+
+  const photo = t.profile_photo_url || t.photo_url || t.avatar_url
+    ? `<img src="${Utils.escapeHtml(t.profile_photo_url || t.photo_url || t.avatar_url)}" alt="Teacher photo" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`
+    : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--blue-600),var(--blue-800));color:#fff;font-size:20px;font-weight:700;border-radius:50%">${Utils.escapeHtml((t.full_name || 'T').split(' ').map(s => s[0]).slice(0,2).join('').toUpperCase() || 'T')}</div>`;
+
+  Modal.show(`Teacher Profile — ${Utils.escapeHtml(t.full_name || 'Teacher')}`, `
+    <div class="card" style="padding:0;overflow:hidden;margin:0">
+      <div style="background:linear-gradient(135deg,var(--blue-900),var(--blue-700));color:white;padding:24px;text-align:center">
+        <div style="width:96px;height:96px;border-radius:50%;overflow:hidden;border:3px solid rgba(255,255,255,.22);margin:0 auto 12px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.08)">${photo}</div>
+        <div style="font-size:22px;font-weight:700;line-height:1.25">${Utils.escapeHtml(t.full_name || 'Unnamed Teacher')}</div>
+        <div style="font-size:12px;opacity:.9;letter-spacing:.08em;margin-top:6px">${Utils.escapeHtml(t.teacher_code || 'Teacher Code')}</div>
+      </div>
+      <div style="padding:20px 20px 0">
+        <div class="teacher-info-list" style="margin-bottom:14px">
+          <div><span class="teacher-label"><i data-lucide="phone"></i>Phone</span><span>${Utils.escapeHtml(t.phone || 'Not provided')}</span></div>
+          <div><span class="teacher-label"><i data-lucide="mail"></i>Email</span><span>${Utils.escapeHtml(t.email || 'Not provided')}</span></div>
+          <div><span class="teacher-label"><i data-lucide="user"></i>Gender</span><span>${Utils.escapeHtml(t.gender || '—')}</span></div>
+          <div><span class="teacher-label"><i data-lucide="graduation-cap"></i>Qualification</span><span>${Utils.escapeHtml(t.qualification || 'Not provided')}</span></div>
+          <div><span class="teacher-label"><i data-lucide="briefcase"></i>Department</span><span>${Utils.escapeHtml(t.department || 'Not provided')}</span></div>
+          <div><span class="teacher-label"><i data-lucide="shield-check"></i>Role</span><span>${Utils.escapeHtml(t.role || 'Teacher')}</span></div>
+          <div><span class="teacher-label"><i data-lucide="badge-check"></i>Teacher Code</span><span>${Utils.escapeHtml(t.teacher_code || '—')}</span></div>
+        </div>
+        <div class="teacher-academic-box">
+          <div class="teacher-section-header">Education Level</div>
+          <div class="teacher-badges">${levels}</div>
+          <div class="teacher-section-header">Classes Assigned</div>
+          <div class="teacher-tags">${classTags}</div>
+          <div class="teacher-section-header">Class Teacher Of</div>
+          <div class="teacher-tags">${classTeacherTags}</div>
+          <div class="teacher-section-header">Subjects Assigned</div>
+          <div class="teacher-tags">${subjectTags}</div>
+        </div>
+      </div>
+    </div>`, `<button class="btn btn-secondary" data-close-modal="true">Close</button>
+     <button class="btn btn-primary" id="profile-edit-btn"><i data-lucide="pencil"></i> Edit</button>`, true);
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+  document.querySelector('[data-close-modal="true"]')?.addEventListener('click', () => Modal.close());
+  document.getElementById('profile-edit-btn')?.addEventListener('click', () => teacherEdit(t));
+}
+
+// ---- Registration assignment queue (same { class_id, subject_ids[] } array as Assignments page) ----
+let tfAssignmentQueue = [];
+let tfAssignmentSubjects = [];
+let tfAssignmentClassLookup = {};
+let tfAvailableClasses = [];
+let teAvailableClasses = [];
+let teAssignedClassTeacherIds = new Set();
+
+function teacherEducationLabel(level) {
+  const normalized = String(level || '').toUpperCase();
+  if (normalized === 'PRIMARY') return 'Primary';
+  if (normalized === 'SECONDARY') return 'Secondary';
+  if (['BOTH', 'ALL'].includes(normalized)) return 'Primary & Secondary';
+  return 'Not set';
+}
+
+function teacherEducationOptions(selected) {
+  const options = [
+    { value: 'PRIMARY', label: 'Primary', allowed: !Scope.isSecondary() },
+    { value: 'SECONDARY', label: 'Secondary', allowed: !Scope.isPrimary() },
+    { value: 'BOTH', label: 'Primary & Secondary', allowed: !Scope.isScoped() }
+  ].filter(option => option.allowed);
+  return `<option value="">Select education level...</option>${options.map(option =>
+    `<option value="${option.value}" ${selected === option.value ? 'selected' : ''}>${option.label}</option>`
+  ).join('')}`;
+}
+
+function teacherLevelMatchesClass(level, classRecord) {
+  const assignedLevel = String(level || '').toUpperCase();
+  const category = String(EducationLevels.getCategory(classRecord) || '').toUpperCase();
+  return assignedLevel === 'BOTH' || assignedLevel === 'ALL' ||
+    (assignedLevel === 'PRIMARY' && category === 'PRIMARY') ||
+    (assignedLevel === 'SECONDARY' && category.includes('SECONDARY'));
+}
+
+function teacherSubjectMatchesClass(subject, classRecord) {
+  const subjectLevel = String(subject?.level || subject?.education_level || 'Both').toUpperCase();
+  const classLevel = String(EducationLevels.getCategory(classRecord) || '').toUpperCase();
+  if (['BOTH', 'ALL', ''].includes(subjectLevel)) return true;
+  if (classLevel === 'PRIMARY') return subjectLevel === 'PRIMARY';
+  return ['SECONDARY', 'LOWER SECONDARY', 'UPPER SECONDARY'].includes(subjectLevel);
+}
+
+function tfEducationLevelChanged() {
+  const select = document.getElementById('tf-education-level');
+  if (!select) return;
+  const newLevel = select.value;
+  const available = tfAvailableClasses.filter(cls => teacherLevelMatchesClass(newLevel, cls));
+  const availableIds = new Set(available.map(cls => String(cls.id)));
+  const before = tfAssignmentQueue.length;
+  tfAssignmentQueue = tfAssignmentQueue.filter(item => availableIds.has(String(item.class_id)));
+  if (tfAssignmentQueue.length < before) {
+    Utils.toast('Removed subject assignments outside the selected education level.', 'info');
+  }
+  tfAssignmentClassLookup = {};
+  available.forEach(cls => { tfAssignmentClassLookup[String(cls.id)] = cls.name || cls.level || ('Class ' + cls.id); });
+  const picker = document.getElementById('tf-class-picker');
+  if (picker) {
+    picker.disabled = !newLevel;
+    picker.innerHTML = `<option value="">Select a class...</option>${available.map(cls =>
+      `<option value="${Utils.escapeHtml(String(cls.id))}">${Utils.escapeHtml(cls.name || cls.level || ('Class ' + cls.id))}</option>`
+    ).join('')}`;
+  }
+  const ctList = document.getElementById('tf-class-teacher-list');
+  if (ctList) ctList.innerHTML = available.length ? available.map(cls => `<label style="display:flex;align-items:center;gap:8px;font-weight:500">
+    <input type="checkbox" name="tf-class-teacher" value="${Utils.escapeHtml(String(cls.id))}">
+    <span>${Utils.escapeHtml(cls.name || cls.level || ('Class ' + cls.id))} <small class="text-muted">(${Utils.escapeHtml(EducationLevels.getCategory(cls))})</small></span>
+  </label>`).join('') : '<span class="text-sm text-muted">No classes available for this education level.</span>';
+  tfAssignRenderQueue();
+  tfAssignRenderClassSubjects();
+}
+
+function teacherEditEducationLevelChanged() {
+  const level = document.getElementById('te-education-level')?.value || '';
+  const allowedClasses = teAvailableClasses.filter(cls => teacherLevelMatchesClass(level, cls));
+  const allowedIds = new Set(allowedClasses.map(cls => String(cls.id)));
+  const previousCount = teAssignedClassTeacherIds.size;
+  teAssignedClassTeacherIds = new Set([...teAssignedClassTeacherIds].filter(id => allowedIds.has(String(id))));
+  if (teAssignedClassTeacherIds.size < previousCount) {
+    Utils.toast('Class Teacher assignments outside the selected education level will be removed.', 'info');
+  }
+  const list = document.getElementById('te-class-teacher-list');
+  if (list) list.innerHTML = allowedClasses.length ? allowedClasses.map(cls => `<label style="display:flex;align-items:center;gap:8px;font-weight:500">
+    <input type="checkbox" name="te-class-teacher" value="${Utils.escapeHtml(String(cls.id))}" ${teAssignedClassTeacherIds.has(String(cls.id)) ? 'checked' : ''}>
+    <span>${Utils.escapeHtml(cls.name || cls.level || ('Class ' + cls.id))} <small class="text-muted">(${Utils.escapeHtml(EducationLevels.getCategory(cls))})</small></span>
+  </label>`).join('') : '<span class="text-sm text-muted">No classes available for this education level.</span>';
+  list?.querySelectorAll('input[name="te-class-teacher"]').forEach(input => input.addEventListener('change', () => {
+    if (input.checked) teAssignedClassTeacherIds.add(String(input.value));
+    else teAssignedClassTeacherIds.delete(String(input.value));
+  }));
+}
+
+async function teacherForm() {
+  tfAssignmentQueue = [];
+  tfAssignmentSubjects = [];
+  tfAssignmentClassLookup = {};
+  tfAvailableClasses = [];
+  tfActiveYearId = null;
+  let formClasses = [];
+  try {
+    const [cls, subj, yrs] = await Promise.all([
+      DB.get('classes'),
+      DB.query('subjects', '*', { status: 'active' }),
+      DB.get('academic_years').catch(() => [])
+    ]);
+    formClasses = (cls || []).filter(c => teacherMatchesScope(c)).sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
+    tfAvailableClasses = formClasses;
+    tfAssignmentSubjects = (subj || []).sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
+    const formActiveYear = (yrs || []).find(y => (y.status || y.state) === 'active' || y.is_active);
+    tfActiveYearId = formActiveYear ? formActiveYear.id : null;
+  } catch (e) {
+    console.warn('[TEACHER FORM] Could not load classes/subjects:', e);
+  }
+
+  Modal.show('Add Teacher', `
+    <div class="form-group"><label>Teacher Code (11 Digits) <span class="required">*</span></label><input id="tf-code" class="input-field" placeholder="e.g., 54102325012" maxlength="11"></div>
+    <div class="form-group"><label>Full Name <span class="required">*</span></label><input id="tf-name" class="input-field" placeholder="e.g., John Doe"></div>
+    <div class="form-group"><label>Email <span class="required">*</span></label><input id="tf-email" class="input-field" placeholder="e.g., john@rukara.edu"></div>
+    <div class="form-group"><label>Password <span class="required">*</span></label><input id="tf-pass" class="input-field" type="password" value="teacher123" placeholder="teacher123" autocomplete="new-password"><p class="form-hint">Default password: teacher123. The teacher should change it after signing in.</p></div>
+    <div class="form-group"><label>Phone</label><input id="tf-phone" class="input-field" placeholder="e.g., +250788123456"></div>
+    <div class="form-group"><label>Education Level <span class="required">*</span></label>
+      <select id="tf-education-level" class="select-field" required onchange="tfEducationLevelChanged()">
+        ${teacherEducationOptions('')}
+      </select>
+      <p class="form-hint">The teacher can access assigned academic information only within the selected education level.</p>
+    </div>
+    <div class="form-group"><label><i data-lucide="link" style="width:14px;height:14px"></i> Assign Classes & Subjects</label>
+      <label style="font-size:12px;color:var(--gray-500);font-weight:600">Class</label>
+      <div style="display:flex;gap:8px;margin:4px 0 8px">
+        <select id="tf-class-picker" class="select-field" style="flex:1" onchange="tfAssignRenderClassSubjects()" disabled>
+          <option value="">Select a class...</option>
+        </select>
+      </div>
+      <div id="tf-subject-panel" style="border:1px solid var(--gray-200);border-radius:10px;padding:10px;background:var(--gray-50);margin-bottom:8px"><div class="text-sm text-muted">Select a class first to choose the subjects taught in that class.</div></div>
+      <button type="button" class="btn btn-sm btn-outline" id="tf-add-queue-btn" style="width:100%;justify-content:center"><i data-lucide="plus"></i> Add Class With Subjects</button>
+      <div id="tf-queue" style="margin-top:10px"></div>
+      <p class="form-hint">Same queue as the Assignments page: one class with its subjects at a time. You can refine it later in Assignments.</p>
+    </div>
+    <div class="form-group">
+      <label>Class Teacher Assignment</label>
+      <div id="tf-class-teacher-list" style="display:grid;gap:7px;max-height:190px;overflow-y:auto;padding:10px;border:1px solid var(--gray-200);border-radius:10px">
+        <span class="text-sm text-muted">Select the teacher education level first.</span>
+      </div>
+      <p class="form-hint">Select each class this teacher will manage as Class Teacher. Each class has one primary Class Teacher; assigning an occupied class transfers it to this teacher.</p>
+    </div>
+    <div class="alert alert-info" style="margin-bottom:0"><i data-lucide="info"></i> After registration, a professional welcome email and SMS will be sent to the teacher listing these classes and subjects.</div>`,
+    `<button class="btn btn-secondary" data-modal-close="true">Cancel</button>
+     <button class="btn btn-primary" id="teacher-save-btn"><i data-lucide="save"></i> Save & Send Welcome</button>`);
+
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+  tfAssignRenderClassSubjects();
+  tfAssignRenderQueue();
+  document.getElementById('tf-add-queue-btn')?.addEventListener('click', tfAssignAddClassToQueue);
+  document.getElementById('teacher-save-btn')?.addEventListener('click', teacherSave);
+  document.querySelector('[data-modal-close="true"]')?.addEventListener('click', () => Modal.close());
+}
+
+// ---- Registration assignment queue renderers ----
+let tfActiveYearId = null;
+
+async function tfCheckConflicts(pairs) {
+  if (typeof findAssignmentConflicts === 'function') return findAssignmentConflicts(pairs, null);
+  // Fallback when the Assignments module is not loaded: same rule, local query.
+  const wanted = (pairs || []).filter(p => p && p.class_id && p.subject_id);
+  if (!wanted.length) return [];
+  const classIds = [...new Set(wanted.map(p => String(p.class_id)))];
+  const { data: rows, error } = await sbClient.from('teacher_assignments')
+    .select('teacher_id,class_id,subject_id,academic_year_id')
+    .in('class_id', classIds);
+  if (error) throw error;
+  const conflicts = [];
+  (wanted || []).forEach(p => {
+    const hit = (rows || []).find(r =>
+      String(r.class_id) === String(p.class_id) &&
+      String(r.subject_id) === String(p.subject_id) &&
+      String(r.academic_year_id || '') === String(p.academic_year_id || '')
+    );
+    if (hit) conflicts.push({ ...p, teacherName: 'another teacher' });
+  });
+  return conflicts;
+}
+
+function tfConflictMessage(conflicts) {
+  if (typeof conflictMessage === 'function') return conflictMessage(conflicts);
+  return 'Already assigned to another teacher: ' + conflicts.map(c => `${c.subject_id} in class ${c.class_id}`).join('; ');
+}
+
+function tfAssignRenderClassSubjects() {
+  const classId = document.getElementById('tf-class-picker')?.value || '';
+  const panel = document.getElementById('tf-subject-panel');
+  if (!panel) return;
+  if (!classId) {
+    panel.innerHTML = '<div class="text-sm text-muted">Select a class first to choose the subjects taught in that class.</div>';
+    return;
+  }
+  const classRecord = tfAvailableClasses.find(cls => String(cls.id) === String(classId));
+  const existing = tfAssignmentQueue.find(item => String(item.class_id) === String(classId));
+  const checked = new Set((existing ? existing.subject_ids : []).map(String));
+  const eligibleSubjects = (tfAssignmentSubjects || []).filter(subject => teacherSubjectMatchesClass(subject, classRecord));
+  const list = eligibleSubjects.map(s => `
+    <label style="display:flex;align-items:center;gap:8px;padding:4px 0;font-size:13px;cursor:pointer">
+      <input type="checkbox" name="tf-subject" value="${Utils.escapeHtml(String(s.id))}" ${checked.has(String(s.id)) ? 'checked' : ''} onchange="tfAssignRenderSubjectCount()" style="width:16px;height:16px;accent-color:var(--blue-600)">
+      ${Utils.escapeHtml(s.name)}
+    </label>
+  `).join('') || '<div class="text-sm text-muted">No active subjects available for this class.</div>';
+  panel.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:4px;padding-bottom:4px;border-bottom:1px solid var(--gray-200)">
+      <span class="text-xs text-muted" id="tf-subject-count" style="font-weight:600">${checked.size ? checked.size + ' subject(s) selected' : 'Select one or more subjects'}</span>
+      <span style="display:inline-flex;gap:6px">
+        <button type="button" class="btn btn-xs btn-outline" onclick="tfAssignSelectAllSubjects()">Select all</button>
+        <button type="button" class="btn btn-xs btn-outline" onclick="tfAssignClearSubjects()">Clear</button>
+      </span>
+    </div>
+    ${list}`;
+}
+
+function tfAssignRenderSubjectCount() {
+  const count = document.querySelectorAll('input[name="tf-subject"]:checked').length;
+  const el = document.getElementById('tf-subject-count');
+  if (el) el.textContent = count ? count + ' subject(s) selected' : 'Select one or more subjects';
+}
+
+function tfAssignSelectAllSubjects() {
+  document.querySelectorAll('input[name="tf-subject"]').forEach(cb => cb.checked = true);
+  tfAssignRenderSubjectCount();
+}
+
+function tfAssignClearSubjects() {
+  document.querySelectorAll('input[name="tf-subject"]').forEach(cb => cb.checked = false);
+  tfAssignRenderSubjectCount();
+}
+
+function tfAssignRenderQueue() {
+  const queue = document.getElementById('tf-queue');
+  if (!queue) return;
+  if (!tfAssignmentQueue.length) {
+    queue.innerHTML = '<div class="text-sm text-muted">No class assigned yet. Select one class and its subjects, then add it.</div>';
+    return;
+  }
+  const totalSubjects = tfAssignmentQueue.reduce((sum, item) => sum + (item.subject_ids || []).length, 0);
+  queue.innerHTML = `
+    <div style="padding:10px 12px;border:1px solid rgba(37,99,235,.18);border-radius:8px;background:rgba(37,99,235,.05);margin-bottom:10px;">
+      <div style="font-size:12px;color:var(--gray-600);text-transform:uppercase;letter-spacing:.08em;font-weight:700;margin-bottom:4px">Summary</div>
+      <div style="font-weight:700;color:var(--gray-900)">${tfAssignmentQueue.length} class(es) • ${totalSubjects} subject(s)</div>
+    </div>` + tfAssignmentQueue.map(item => {
+    const className = tfAssignmentClassLookup[String(item.class_id)] || 'Unknown class';
+    const subjectNames = (item.subject_ids || [])
+      .map(sid => (tfAssignmentSubjects.find(s => String(s.id) === String(sid))?.name) || 'Unknown subject')
+      .join(', ');
+    return `
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:10px 12px;border:1px solid var(--gray-200);border-radius:8px;margin-bottom:8px;background:var(--gray-50)">
+        <div style="flex:1">
+          <div style="font-weight:700;color:var(--gray-900)">${Utils.escapeHtml(className)}</div>
+          <div style="font-size:12px;color:var(--gray-600);margin-top:2px;font-weight:600">${(item.subject_ids || []).length} subject(s)</div>
+          <div class="text-sm text-muted" style="margin-top:4px">${Utils.escapeHtml(subjectNames || 'No subjects')}</div>
+        </div>
+        <button type="button" class="btn btn-sm btn-danger" onclick="tfAssignRemoveFromQueue('${Utils.escapeHtml(String(item.class_id))}')">Remove</button>
+      </div>`;
+  }).join('');
+}
+
+function tfAssignRemoveFromQueue(classId) {
+  tfAssignmentQueue = tfAssignmentQueue.filter(item => String(item.class_id) !== String(classId));
+  tfAssignRenderQueue();
+  const picker = document.getElementById('tf-class-picker');
+  if (picker && String(picker.value) === String(classId)) {
+    picker.value = '';
+    tfAssignRenderClassSubjects();
+  }
+}
+
+async function tfAssignAddClassToQueue() {
+  const classId = document.getElementById('tf-class-picker')?.value || '';
+  const selectedSubjects = [...document.querySelectorAll('input[name="tf-subject"]:checked')].map(el => el.value);
+  if (!classId) return Utils.toast('Select a class first', 'error');
+  if (!selectedSubjects.length) return Utils.toast('Select at least one subject for this class', 'error');
+
+  // No double-booking: a subject in this class can belong to only one teacher.
+  let allowedSubjects = [...new Set(selectedSubjects.map(String))];
+  try {
+    const conflicts = await tfCheckConflicts(
+      allowedSubjects.map(sid => ({ class_id: String(classId), subject_id: String(sid), academic_year_id: tfActiveYearId }))
+    );
+    if (conflicts.length) {
+      const taken = new Set(conflicts.map(c => String(c.subject_id)));
+      allowedSubjects = allowedSubjects.filter(sid => !taken.has(String(sid)));
+      Utils.toast(tfConflictMessage(conflicts), 'error');
+      if (!allowedSubjects.length) return;
+    }
+  } catch (e) {
+    console.warn('[TEACH ASSIGN] Conflict check failed, proceeding:', e);
+  }
+
+  const existing = tfAssignmentQueue.find(item => String(item.class_id) === String(classId));
+  if (existing) {
+    // MERGE, never replace — a teacher can hold several subjects in one class.
+    existing.subject_ids = [...new Set([...(existing.subject_ids || []).map(String), ...allowedSubjects])];
+  } else {
+    tfAssignmentQueue.push({ class_id: classId, subject_ids: [...new Set(allowedSubjects)] });
+  }
+  tfAssignRenderQueue();
+  const picker = document.getElementById('tf-class-picker');
+  if (picker) picker.value = '';
+  tfAssignRenderClassSubjects();
+}
+
+async function teacherSave() {
+  const code = document.getElementById('tf-code')?.value?.trim();
+  const name = document.getElementById('tf-name')?.value?.trim();
+  const email = document.getElementById('tf-email')?.value?.trim();
+  const pass = document.getElementById('tf-pass')?.value || 'teacher123';
+  const phone = document.getElementById('tf-phone')?.value?.trim() || null;
+  const educationLevel = document.getElementById('tf-education-level')?.value || '';
+
+  if (!code || !name || !email || !pass) return Utils.toast('Fill all required fields', 'error');
+  if (!['PRIMARY', 'SECONDARY', 'BOTH'].includes(educationLevel)) return Utils.toast('Select the teacher education level', 'error');
+  if (!/^\d{11}$/.test(code)) return Utils.toast('Teacher code must be exactly 11 digits', 'error');
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return Utils.toast('Enter a valid teacher email address', 'error');
+  if (pass.length < 8) return Utils.toast('Password must be at least 8 characters', 'error');
+
+  const saveBtn = document.getElementById('teacher-save-btn');
+  if (saveBtn) { saveBtn.disabled = true; saveBtn.innerHTML = '<div class="spinner" style="width:16px;height:16px;border-width:2px"></div> Registering...'; }
+
+  try {
+    let { data: currentSessionData } = await sbClient.auth.getSession();
+    let adminSession = currentSessionData?.session || null;
+    if (!adminSession) {
+      // Session may have expired (stale refresh token) — try once to refresh.
+      try {
+        const { data: refreshed } = await sbClient.auth.refreshSession();
+        adminSession = refreshed?.session || null;
+      } catch (refreshErr) {
+        console.warn('[TEACHER SAVE] Session refresh failed:', refreshErr);
+      }
+    }
+    if (!adminSession) {
+      if (saveBtn) { saveBtn.disabled = false; saveBtn.innerHTML = '<i data-lucide="save"></i> Save & Send Welcome'; }
+      return Utils.toast('Your login session expired. Please sign out and sign in again, then retry.', 'error');
+    }
+    const restoreAdminSession = async () => {
+      const { data: activeSessionData } = await sbClient.auth.getSession();
+      const activeUserId = activeSessionData?.session?.user?.id || null;
+      if (activeUserId !== adminSession.user?.id) {
+        const { error: restoreError } = await sbClient.auth.setSession({
+          access_token: adminSession.access_token,
+          refresh_token: adminSession.refresh_token
+        });
+        if (restoreError) throw restoreError;
+      }
+      const { data: verifiedSession } = await sbClient.auth.getSession();
+      if (verifiedSession?.session?.user?.id !== adminSession.user?.id) {
+        throw new Error('Could not restore the DOS session after creating the teacher login.');
+      }
+    };
+    const [{ data: existingCode }, { data: existingEmail }] = await Promise.all([
+      sbClient.from('teachers').select('id').eq('teacher_code', code).maybeSingle(),
+      sbClient.from('users').select('id').eq('email', email).maybeSingle()
+    ]);
+    if (existingCode) { if (saveBtn) { saveBtn.disabled = false; saveBtn.innerHTML = '<i data-lucide="save"></i> Save & Send Welcome'; } return Utils.toast('That teacher code is already registered', 'error'); }
+    if (existingEmail) { if (saveBtn) { saveBtn.disabled = false; saveBtn.innerHTML = '<i data-lucide="save"></i> Save & Send Welcome'; } return Utils.toast('That email address is already registered', 'error'); }
+    const accountEducationLevel = educationLevel === 'BOTH' ? 'all' : educationLevel.toLowerCase();
+
+    // Create the auth account. A 422 "already registered" means a previous
+    // attempt created the auth user but failed later — recover via sign-in
+    // with the password from this form instead of failing.
+    let teacherAuthId = null;
+    const { data: authData, error } = await sbClient.auth.signUp({ email, password: pass });
+    if (error) {
+      const msg = String(error.message || '');
+      if (/already registered|already exists|user.*exists/i.test(msg)) {
+        const { data: signInData, error: signInErr } = await sbClient.auth.signInWithPassword({ email, password: pass });
+        if (signInErr || !signInData?.user?.id) {
+          throw new Error('This email already has a login account with a different password. Delete it in Supabase Dashboard → Authentication → Users, or use a different email.');
+        }
+        teacherAuthId = signInData.user.id;
+        await restoreAdminSession();
+      } else {
+        throw error;
+      }
+    } else {
+      if (!authData?.user?.id) throw new Error('Teacher account could not be created');
+      teacherAuthId = authData.user.id;
+      await restoreAdminSession();
+    }
+
+    await restoreAdminSession();
+    // Snapshot the assignment queue built on this page ({ class_id, subject_ids[] }).
+    const queuedAssignments = (typeof tfAssignmentQueue !== 'undefined' ? tfAssignmentQueue : [])
+      .filter(item => item && item.class_id && (item.subject_ids || []).length)
+      .map(item => ({ class_id: String(item.class_id), subject_ids: [...new Set((item.subject_ids || []).map(String))] }));
+
+    const { data: newTeacherId, error: teacherRegistrationError } = await sbClient.rpc('rms_register_teacher', {
+      p_user_id: teacherAuthId,
+      p_teacher_code: code,
+      p_email: email,
+      p_full_name: name,
+      p_phone: phone,
+      p_user_education_level: accountEducationLevel,
+      p_teacher_education_level: educationLevel
+    });
+    if (teacherRegistrationError) {
+      if (/rms_register_teacher/i.test(teacherRegistrationError.message || '')
+        || teacherRegistrationError.code === 'PGRST202') {
+        throw new Error('Teacher registration setup is missing in Supabase. Run backend/sql/teacher_registration_users_rls.sql in the SQL Editor, then retry.');
+      }
+      throw teacherRegistrationError;
+    }
+    if (!newTeacherId) {
+      throw new Error('Supabase did not confirm creation of the teacher record.');
+    }
+    DB.invalidate('teachers');
+    DB.invalidate('users');
+
+    const classTeacherIds = Array.from(document.querySelectorAll('#tf-class-teacher-list input[name="tf-class-teacher"]:checked'))
+      .map(input => input.value);
+    if (classTeacherIds.length) {
+      if (!newTeacherId) throw new Error('Teacher was created, but the teacher profile could not be loaded for Class Teacher assignment.');
+      const { error: classTeacherError } = await sbClient.rpc('rms_set_class_teacher_assignments', {
+        p_teacher_id: newTeacherId,
+        p_class_ids: classTeacherIds
+      });
+      if (classTeacherError) throw new Error('Teacher was registered, but Class Teacher assignments could not be saved: ' + classTeacherError.message);
+      DB.invalidate('classes');
+    }
+    let assignedClassNames = [];
+    let assignedSubjectNames = [];
+    let activeYearId = null;
+    let classById = new Map();
+    let subjectById = new Map();
+    try {
+      const [allClasses, allSubjects, allYears] = await Promise.all([
+        queuedAssignments.length ? DB.get('classes') : Promise.resolve([]),
+        queuedAssignments.length ? DB.get('subjects') : Promise.resolve([]),
+        DB.get('academic_years').catch(() => [])
+      ]);
+      classById = new Map((allClasses || []).map(c => [String(c.id), c]));
+      subjectById = new Map((allSubjects || []).map(s => [String(s.id), s]));
+      const namePair = (classId, subjectId) => {
+        const c = classById.get(String(classId));
+        const s = subjectById.get(String(subjectId));
+        return { c: c ? (c.name || c.level || ('Class ' + c.id)) : null, s: s ? (s.name || 'Subject') : null };
+      };
+      const seenClasses = new Set();
+      const seenSubjects = new Set();
+      queuedAssignments.forEach(item => {
+        (item.subject_ids || []).forEach(sid => {
+          const n = namePair(item.class_id, sid);
+          if (n.c && !seenClasses.has(String(item.class_id))) { seenClasses.add(String(item.class_id)); assignedClassNames.push(n.c); }
+          if (n.s && !seenSubjects.has(String(sid))) { seenSubjects.add(String(sid)); assignedSubjectNames.push(n.s); }
+        });
+      });
+      const activeYear = (allYears || []).find(y => (y.status || y.state) === 'active' || y.is_active);
+      activeYearId = activeYear ? activeYear.id : null;
+    } catch (e) {
+      console.warn('[TEACHER ASSIGN] Could not resolve names/year:', e);
+    }
+
+    // Create the queued assignments (same pairs as the Assignments page).
+    let assignmentWarning = null;
+    if (newTeacherId && queuedAssignments.length) {
+      try {
+        const payload = [];
+        queuedAssignments.forEach(item => {
+          (item.subject_ids || []).forEach(subjectId => {
+            payload.push({ teacher_id: newTeacherId, class_id: item.class_id, subject_id: subjectId, academic_year_id: activeYearId });
+          });
+        });
+        // Final no-double-booking check (a slot may have been taken since it was queued).
+        let finalPayload = payload;
+        const conflicts = await tfCheckConflicts(payload);
+        if (conflicts.length) {
+          const taken = new Set(conflicts.map(c => `${c.class_id}|${c.subject_id}`));
+          finalPayload = payload.filter(p => !taken.has(`${String(p.class_id)}|${String(p.subject_id)}`));
+          assignmentWarning = tfConflictMessage(conflicts) + ' Conflicting assignments were skipped.';
+        }
+        // Names in the welcome email must reflect only what was actually saved.
+        const savedPairs = new Set(finalPayload.map(p => `${String(p.class_id)}|${String(p.subject_id)}`));
+        assignedClassNames = [];
+        assignedSubjectNames = [];
+        {
+          const seenC = new Set();
+          const seenS = new Set();
+          finalPayload.forEach(p => {
+            const c = classById.get(String(p.class_id));
+            const s = subjectById.get(String(p.subject_id));
+            if (c && !seenC.has(String(p.class_id))) { seenC.add(String(p.class_id)); assignedClassNames.push(c.name || c.level || ('Class ' + c.id)); }
+            if (s && !seenS.has(String(p.subject_id))) { seenS.add(String(p.subject_id)); assignedSubjectNames.push(s.name || 'Subject'); }
+          });
+        }
+        if (finalPayload.length) {
+          const { data: savedAssignments, error: assignErr } = await sbClient.from('teacher_assignments')
+            .insert(finalPayload)
+            .select('id');
+          if (assignErr) throw assignErr;
+          if ((savedAssignments || []).length !== finalPayload.length) {
+            throw new Error('The database did not confirm every selected class and subject assignment.');
+          }
+          DB.invalidate('teacher_assignments');
+        }
+      } catch (assignErr) {
+        console.error('[TEACHER ASSIGN] Failed:', assignErr);
+        assignmentWarning = 'Assignments could not be saved: ' + (assignErr.message || 'unknown error');
+      }
+    } else if (queuedAssignments.length) {
+      assignmentWarning = 'Assignments could not be saved because the teacher profile could not be loaded.';
+    }
+
+    // Send welcome notifications
+    const teacherData = {
+      name,
+      email,
+      phone,
+      teacherCode: code,
+      classes: [...new Set([...assignedClassNames, ...classTeacherIds.map(id => tfAssignmentClassLookup[id]).filter(Boolean)])],
+      subjects: assignedSubjectNames,
+      educationLevel: teacherEducationLabel(educationLevel)
+    };
+
+    let welcomeResult = { success: true, emailSent: false, smsSent: false, emailStatus: 'pending', smsStatus: 'pending' };
+    try {
+      if (typeof WelcomeNotification !== 'undefined') {
+        welcomeResult = await WelcomeNotification.registerTeacher(teacherData, creatorId);
+      }
+    } catch (notifErr) {
+      console.error('[WELCOME NOTIF ERROR]', notifErr);
+    }
+
+    Modal.close();
+    if (assignmentWarning) {
+      Utils.toast('Teacher registered, but ' + assignmentWarning + ' You can retry from Assignments.', 'error');
+    } else {
+      Utils.toast('Teacher registered successfully! Welcome notifications sent.', 'success');
+    }
+    await renderTeachers();
+
+    // Show success modal with delivery status
+    showWelcomeResultModal(name, email, phone, code, welcomeResult);
+
+  } catch (e) {
+    if (/row-level security policy.*users|users.*row-level security policy/i.test(e.message || '')) {
+      Utils.toast('Teacher account was not fully registered. Restore your DOS session and run backend/sql/teacher_registration_users_rls.sql in Supabase SQL Editor, then retry.', 'error');
+    } else {
+      Utils.toast('Error: ' + e.message, 'error');
+    }
+  } finally {
+    if (saveBtn) { saveBtn.disabled = false; saveBtn.innerHTML = '<i data-lucide="save"></i> Save & Send Welcome'; }
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+    document.querySelectorAll('#te-class-teacher-list input[name="te-class-teacher"]').forEach(input => input.addEventListener('change', () => {
+      if (input.checked) teAssignedClassTeacherIds.add(String(input.value));
+      else teAssignedClassTeacherIds.delete(String(input.value));
+    }));
+  }
+}
+
+function showWelcomeResultModal(name, email, phone, code, result) {
+  const emailOk = result.emailSent;
+  const smsOk = result.smsSent;
+  const emailErrMsg = !emailOk && result.emailError ? `<p style="color:#dc2626;font-size:11px;margin:4px 0 0">Reason: ${Utils.escapeHtml(String(result.emailError).slice(0, 180))}</p>` : '';
+  const smsErrMsg = !smsOk && result.smsError ? `<p style="color:#dc2626;font-size:11px;margin:4px 0 0">Reason: ${Utils.escapeHtml(String(result.smsError).slice(0, 180))}</p>` : '';
+  Modal.show('✓ Teacher Registered Successfully', `
+    <div style="text-align:center;margin-bottom:20px">
+      <div style="width:64px;height:64px;border-radius:50%;background:#ecfdf5;display:flex;align-items:center;justify-content:center;margin:0 auto 12px">
+        <i data-lucide="check-circle" style="width:32px;height:32px;color:#059669"></i>
+      </div>
+      <h2 style="color:#0d2f6b;margin:0;font-size:20px">Welcome, ${Utils.escapeHtml(name)}!</h2>
+      <p style="color:#64748b;margin:4px 0 0;font-size:14px">Account created and notifications sent</p>
+    </div>
+    <div style="display:grid;gap:12px;margin-bottom:20px">
+      <div class="card" style="padding:14px">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:14px;font-weight:600">📧 Welcome Email</span>
+          <span style="color:${emailOk ? '#059669' : '#dc2626'};font-weight:700;font-size:14px">${emailOk ? '✓ Sent' : '✗ Failed'}</span>
+        </div>
+        <p style="color:#94a3b8;font-size:12px;margin:4px 0 0">${Utils.escapeHtml(email)}</p>${emailErrMsg}
+      </div>
+      <div class="card" style="padding:14px">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:14px;font-weight:600">💬 SMS</span>
+          <span style="color:${smsOk ? '#059669' : '#dc2626'};font-weight:700;font-size:14px">${smsOk ? '✓ Sent' : '✗ Failed'}</span>
+        </div>
+        <p style="color:#94a3b8;font-size:12px;margin:4px 0 0">${Utils.escapeHtml(phone || 'No phone provided')}</p>${smsErrMsg}
+      </div>
+    </div>
+    <p style="color:#64748b;font-size:13px;margin-bottom:16px">Teacher will be prompted to change password on first login.</p>`,
+    `<button class="btn btn-secondary" data-modal-close="true">Close</button>
+     <button class="btn btn-outline" id="resend-email-btn"><i data-lucide="mail"></i> Resend Email</button>
+     <button class="btn btn-outline" id="resend-sms-btn"><i data-lucide="smartphone"></i> Resend SMS</button>`);
+
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+
+  document.getElementById('resend-email-btn')?.addEventListener('click', async () => {
+    const btn = document.getElementById('resend-email-btn');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<div class="spinner" style="width:14px;height:14px;border-width:2px"></div>'; }
+    try {
+      if (typeof WelcomeNotification !== 'undefined') {
+        // Find teacher by code
+        const { data: teacher } = await sbClient.from('teachers').select('*').eq('teacher_code', code).single();
+        if (teacher) {
+          const res = await WelcomeNotification.resendEmail(teacher.id);
+          if (res.success) Utils.toast('Welcome email resent!', 'success');
+          else Utils.toast('Resend failed: ' + (res.emailError || 'unknown error'), 'error');
+        }
+      }
+    } catch (e) { Utils.toast('Failed to resend email', 'error'); }
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i data-lucide="mail"></i> Resend Email'; }
+  });
+
+  document.getElementById('resend-sms-btn')?.addEventListener('click', async () => {
+    const btn = document.getElementById('resend-sms-btn');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<div class="spinner" style="width:14px;height:14px;border-width:2px"></div>'; }
+    try {
+      if (typeof WelcomeNotification !== 'undefined') {
+        const { data: teacher } = await sbClient.from('teachers').select('*').eq('teacher_code', code).single();
+        if (teacher) {
+          const res = await WelcomeNotification.resendSMS(teacher.id);
+          if (res.success) Utils.toast('Welcome SMS resent!', 'success');
+        }
+      }
+    } catch (e) { Utils.toast('Failed to resend SMS', 'error'); }
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i data-lucide="smartphone"></i> Resend SMS'; }
+  });
+
+  document.querySelector('[data-modal-close="true"]')?.addEventListener('click', () => Modal.close());
+}
+
+async function teacherEdit(t) {
+  let classes;
+  try {
+    classes = (await DB.get('classes')).filter(c => teacherMatchesScope(c))
+      .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
+  } catch (error) {
+    Utils.toast('Could not load classes for Class Teacher assignment: ' + (error.message || 'database request failed'), 'error');
+    return;
+  }
+  teAvailableClasses = classes;
+  teAssignedClassTeacherIds = new Set(classes.filter(c => String(c.class_teacher_id || '') === String(t.id)).map(c => String(c.id)));
+  const educationLevel = ['PRIMARY', 'SECONDARY', 'BOTH'].includes(String(t.education_level || '').toUpperCase())
+    ? String(t.education_level).toUpperCase() : '';
+  const visibleClassTeacherClasses = classes.filter(c => teacherLevelMatchesClass(educationLevel, c));
+  document.getElementById('modal-root').innerHTML = `
+    <div class="modal-overlay">
+      <div class="modal"><div class="modal-header">Edit Teacher</div><div class="modal-body">
+        <div class="form-group"><label>Teacher Code</label><input id="te-code" class="input-field" value="${Utils.escapeHtml(t.teacher_code || '')}"></div>
+        <div class="form-group"><label>Full Name</label><input id="te-name" class="input-field" value="${Utils.escapeHtml(t.full_name || '')}"></div>
+        <div class="form-group"><label>Email</label><input id="te-email" class="input-field" value="${Utils.escapeHtml(t.email || '')}"></div>
+        <div class="form-group"><label>Phone</label><input id="te-phone" class="input-field" value="${Utils.escapeHtml(t.phone || '')}"></div>
+        <div class="form-group"><label>Status</label><select id="te-status" class="select-field"><option value="active" ${t.status === 'active' ? 'selected' : ''}>Active</option><option value="inactive" ${t.status === 'inactive' ? 'selected' : ''}>Inactive</option></select></div>
+        <div class="form-group"><label>Education Level <span class="required">*</span></label>
+          <select id="te-education-level" class="select-field" required onchange="teacherEditEducationLevelChanged()">
+            ${teacherEducationOptions(educationLevel)}
+          </select>
+        </div>
+        <div class="form-group"><label>Class Teacher Assignment</label>
+          <div id="te-class-teacher-list" style="display:grid;gap:7px;max-height:190px;overflow-y:auto;padding:10px;border:1px solid var(--gray-200);border-radius:10px">
+            ${visibleClassTeacherClasses.length ? visibleClassTeacherClasses.map(c => `<label style="display:flex;align-items:center;gap:8px;font-weight:500">
+              <input type="checkbox" name="te-class-teacher" value="${Utils.escapeHtml(String(c.id))}" ${teAssignedClassTeacherIds.has(String(c.id)) ? 'checked' : ''}>
+              <span>${Utils.escapeHtml(c.name || c.level || ('Class ' + c.id))} <small class="text-muted">(${Utils.escapeHtml(EducationLevels.getCategory(c))})</small></span>
+            </label>`).join('') : '<span class="text-sm text-muted">No classes available in your education-level scope.</span>'}
+          </div>
+          <p class="form-hint">Selected classes are the teacher’s Class Teacher responsibilities. Each class has one primary Class Teacher; selecting a class assigned to someone else transfers it.</p>
+        </div>
+        <div class="form-group">
+          <label>Subject Teaching Assignments</label>
+          <p class="form-hint">Manage the teacher’s assigned classes and subjects by education level. The assignments page only displays records permitted by your DOS scope.</p>
+          <button type="button" class="btn btn-outline" id="teacher-edit-assignments-btn"><i data-lucide="link"></i> Manage Classes &amp; Subjects</button>
+        </div>
+        <div class="alert alert-info" style="margin-bottom:0"><i data-lucide="info"></i> Access is restricted to the selected education level and the teacher’s explicit subject/class assignments.</div>
+      </div><div class="modal-footer">
+        <button class="btn btn-danger" id="teacher-edit-delete-btn"><i data-lucide="trash-2"></i> Delete</button>
+        <span style="flex:1"></span>
+        <button class="btn btn-secondary" data-close-modal="true">Cancel</button>
+        <button class="btn btn-primary" id="teacher-update-btn"><i data-lucide="save"></i> Update</button>
+      </div></div></div>`;
+
+  document.querySelector('[data-close-modal="true"]')?.addEventListener('click', () => Modal.close());
+  document.getElementById('teacher-update-btn')?.addEventListener('click', () => teacherUpdate(t.id));
+  document.getElementById('teacher-edit-assignments-btn')?.addEventListener('click', () => {
+    if (typeof assignFilter !== 'undefined') assignFilter = String(t.id);
+    Router.go('admin/assignments');
+  });
+  document.getElementById('teacher-edit-delete-btn')?.addEventListener('click', () => teacherDelete(t));
+  const overlay = document.querySelector('#modal-root .modal-overlay');
+  if (overlay) {
+    overlay.addEventListener('click', (event) => {
+      if (event.target === overlay) Modal.close();
+    });
+  }
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+async function teacherUpdate(id) {
+  try {
+    const educationLevel = document.getElementById('te-education-level')?.value || '';
+    if (!['PRIMARY', 'SECONDARY', 'BOTH'].includes(educationLevel)) {
+      return Utils.toast('Select the teacher education level', 'error');
+    }
+    await DB.update('teachers', id, {
+      teacher_code: document.getElementById('te-code').value,
+      full_name: document.getElementById('te-name').value,
+      email: document.getElementById('te-email').value,
+      phone: document.getElementById('te-phone').value,
+      education_level: educationLevel,
+      status: document.getElementById('te-status').value
+    });
+    const teacher = (await DB.query('teachers', 'user_id', { id }))[0];
+    if (teacher?.user_id) {
+      const { error: userUpdateError } = await sbClient.from('users')
+        .update({ education_level: educationLevel === 'BOTH' ? 'all' : educationLevel.toLowerCase() })
+        .eq('id', teacher.user_id);
+      if (userUpdateError) throw new Error('Teacher profile was updated, but the account education level failed: ' + userUpdateError.message);
+      DB.invalidate('users');
+    }
+    const isActive = document.getElementById('te-status').value === 'active';
+    const selectedClassIds = isActive
+      ? Array.from(document.querySelectorAll('#te-class-teacher-list input[name="te-class-teacher"]:checked')).map(input => input.value)
+      : [];
+    const { error: classTeacherError } = await sbClient.rpc('rms_set_class_teacher_assignments', {
+      p_teacher_id: id,
+      p_class_ids: selectedClassIds
+    });
+    if (classTeacherError) throw new Error('Teacher profile was updated, but Class Teacher assignments failed: ' + classTeacherError.message);
+    DB.invalidate('classes');
+    DB.invalidate('teachers');
+    Modal.close();
+    Utils.toast('Updated', 'success');
+    renderTeachers();
+  } catch (e) { Utils.toast('Error: ' + e.message, 'error'); }
+}
+
+async function teacherDeactivate(id) {
+  Modal.show('Deactivate Teacher', `
+    <p class="text-sm text-muted">Deactivate this teacher? They will no longer appear in assignment lists.</p>`,
+    `<button class="btn btn-secondary" data-close-modal="true">Cancel</button>
+     <button class="btn btn-danger" id="teacher-deactivate-btn"><i data-lucide="user-x"></i> Deactivate</button>`);
+
+  document.querySelector('[data-close-modal="true"]')?.addEventListener('click', () => Modal.close());
+  document.getElementById('teacher-deactivate-btn')?.addEventListener('click', () => confirmTeacherDeactivate(id));
+}
+
+async function confirmTeacherDeactivate(id) {
+  try {
+    const { error: classTeacherError } = await sbClient.rpc('rms_set_class_teacher_assignments', {
+      p_teacher_id: id,
+      p_class_ids: []
+    });
+    if (classTeacherError) throw classTeacherError;
+    await DB.update('teachers', id, { status: 'inactive' });
+    DB.invalidate('classes');
+    Modal.close();
+    Utils.toast('Teacher deactivated', 'success');
+    renderTeachers();
+  } catch (e) { Utils.toast('Error: ' + e.message, 'error'); }
+}
+
+function teacherActivate(id) {
+  DB.update('teachers', id, { status: 'active' }).then(() => {
+    Utils.toast('Teacher activated', 'success');
+    renderTeachers();
+  }).catch(e => Utils.toast('Error: ' + e.message, 'error'));
+}
+
+function teacherDelete(t) {
+  Modal.show('Delete Teacher', `
+    <div class="text-center mb-4">
+      <div style="width:52px;height:52px;margin:0 auto 12px;border-radius:50%;background:var(--red-50);color:var(--red-500);display:flex;align-items:center;justify-content:center"><i data-lucide="trash-2" style="width:24px;height:24px"></i></div>
+      <p style="font-size:15px;color:var(--gray-800)">Delete <strong>${Utils.escapeHtml(t.full_name || 'Teacher')}</strong> permanently?</p>
+    </div>
+    <div class="alert alert-danger" style="margin:0 0 16px"><i data-lucide="alert-triangle"></i> This permanently deletes the teacher, their login account, and everything they own — all assignments, all assessments and their recorded marks. This cannot be undone.</div>`,
+    `<button class="btn btn-secondary" data-close-modal="true">Cancel</button>
+     <button class="btn btn-danger" id="teacher-delete-btn"><i data-lucide="trash-2"></i> Delete Teacher</button>`, true);
+
+  document.querySelector('[data-close-modal="true"]')?.addEventListener('click', () => Modal.close());
+  document.getElementById('teacher-delete-btn')?.addEventListener('click', () => confirmTeacherDelete(t.id, t.user_id || ''));
+}
+
+async function confirmTeacherDelete(id, userId) {
+  const delBtn = document.getElementById('teacher-delete-btn');
+  if (delBtn) { delBtn.disabled = true; delBtn.innerHTML = '<div class="spinner" style="width:14px;height:14px;border-width:2px"></div> Deleting...'; }
+  try {
+    // One atomic server-side call: the RPC removes the teacher profile, login
+    // record, assignments, assessments and every mark recorded against them in
+    // a single transaction, so no related record can block the delete.
+    const { error } = await sbClient.rpc('rms_delete_teacher', { p_teacher_id: id });
+    if (error) throw error;
+    DB.invalidate('users');
+    DB.invalidate('teachers');
+    DB.invalidate('teacher_assignments');
+    try {
+      await DB.insert('audit_logs', {
+        user_id: Auth.currentUser?.id, user_name: Auth.currentUser?.full_name,
+        role: Auth.currentUser?.role, action: 'delete_teacher',
+        new_value: 'Deleted teacher ' + (id || ''),
+        timestamp: new Date().toISOString()
+      });
+    } catch (logErr) { console.warn('[TEACHER DELETE] Audit log failed:', logErr); }
+    Modal.close();
+    Utils.toast('Teacher and all related records deleted', 'success');
+    renderTeachers();
+  } catch (e) {
+    const msg = e.message || '';
+    if (/not permitted/i.test(msg)) {
+      Modal.close();
+      Utils.toast('You do not have permission to delete this teacher.', 'error');
+    } else if (/teacher not found/i.test(msg)) {
+      Modal.close();
+      Utils.toast('This teacher no longer exists. Refresh the list.', 'error');
+      renderTeachers();
+    } else if (/violates foreign key constraint/i.test(msg)) {
+      Modal.close();
+      Utils.toast('Cannot delete: some records still reference this teacher. Please contact the system administrator.', 'error');
+    } else {
+      if (delBtn) { delBtn.disabled = false; delBtn.innerHTML = '<i data-lucide="trash-2"></i> Delete Teacher'; }
+      Utils.toast('Delete error: ' + msg, 'error');
+    }
+  }
+}

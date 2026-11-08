@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=5">
+  <meta name="theme-color" content="#0d2f6b">
+  <meta name="description" content="The public portal for Rukara Model School: access RMS-MIS, student marks, the Digital Library and Examination Centre.">
+  <title>School Portal | Rukara Model School</title>
+  <link rel="icon" type="image/webp" href="public/logo.webp">
+  <link rel="icon" type="image/svg+xml" href="public/favicon.svg">
+  <link rel="shortcut icon" href="public/logo.webp">
+  <link rel="manifest" id="pwa-manifest-link">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="RMS-MIS">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' blob: data:; script-src 'self' 'unsafe-eval' 'unsafe-inline' blob: https://unpkg.com https://cdn.jsdelivr.net https://cdn.emailjs.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; font-src 'self' https://fonts.gstatic.com; img-src 'self' blob: data: https:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.vercel.app https://unpkg.com https://api.emailjs.com https://*.emailjs.com; frame-src 'self' blob: https://ztlfidglxfwjpxkqfviy.supabase.co; manifest-src 'self' blob: data:; worker-src 'self' blob:;">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,400;0,500;0,600;0,700;0,800;1,600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css?v=20261011-16">
+  <link rel="stylesheet" href="css/report-card.css?v=20261008-10">
+  <link rel="stylesheet" href="css/student-report-card.css?v=20261008-10">
+  <link rel="stylesheet" href="css/digital-library.css?v=20261008-22">
+  <link rel="stylesheet" href="css/report-wizard.css?v=20261006-2">
+  <link rel="stylesheet" href="css/communication-center.css?v=20260928-1">
+  <link rel="stylesheet" href="css/public-home.css?v=11">
+  <script>
+    (function() {
+      var manifest = {
+        name: 'RMS-MIS – Rukara Model School Marks Information System',
+        short_name: 'RMS-MIS',
+        description: 'Rukara Model School Marks Information System — Manage assessments, marks, grades, and reports.',
+        start_url: new URL('.', document.baseURI).href,
+        display: 'standalone',
+        background_color: '#0d2f6b',
+        theme_color: '#0d2f6b',
+        orientation: 'any',
+        scope: new URL('.', document.baseURI).href,
+        lang: 'en',
+        categories: ['education', 'productivity'],
+        icons: [
+          { src: new URL('public/icon-192.svg', document.baseURI).href, sizes: '192x192', type: 'image/svg+xml', purpose: 'any' },
+          { src: new URL('public/icon-512.svg', document.baseURI).href, sizes: '512x512', type: 'image/svg+xml', purpose: 'any' },
+          { src: new URL('public/logo.webp', document.baseURI).href, sizes: '192x192', type: 'image/webp', purpose: 'any' },
+          { src: new URL('public/logo.webp', document.baseURI).href, sizes: '512x512', type: 'image/webp', purpose: 'any' }
+        ]
+      };
+      var blob = new Blob([JSON.stringify(manifest)], { type: 'application/manifest+json' });
+      var link = document.getElementById('pwa-manifest-link');
+      if (link) link.href = URL.createObjectURL(blob);
+    })();
+  </script>
+  <script defer src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <div id="app">
+    <div id="loading-screen" class="loading-screen">
+      <img src="public/logo.webp" alt="RMS Logo" style="width:56px;height:56px;object-fit:contain;margin-bottom:12px" onerror="this.style.display='none'">
+      <div class="spinner"></div>
+      <p style="color:var(--gray-500);font-size:14px;font-weight:500">Loading...</p>
+      <p id="boot-slow-msg" style="display:none;color:var(--gray-500);font-size:12px;margin-top:8px">Taking too long? Check your internet connection, then <a href="#" onclick="location.reload();return false" style="color:var(--blue-600)">refresh the page</a>.</p>
+    </div>
+    <script>
+      setTimeout(function() {
+        var loading = document.getElementById('loading-screen');
+        var login = document.getElementById('login-page');
+        if (loading && login && loading.style.display !== 'none' && login.style.display === 'none') {
+          var msg = document.getElementById('boot-slow-msg');
+          if (msg) msg.style.display = 'block';
+        }
+      }, 12000);
+    </script>
+
+    <div id="login-page" class="login-page" style="display:none">
+      <div id="public-home" class="rms-public-home" hidden>
+        <header class="rph-header" id="rph-top">
+          <a class="rph-brand" href="#public-home">
+            <img src="public/logo.webp" alt="" width="48" height="48">
+            <span><strong id="rph-school-name"></strong><small id="rph-motto"></small></span>
+          </a>
+          <nav class="rph-nav" aria-label="School portal navigation">
+            <a href="#public-home" id="rph-nav-home"></a>
+            <a href="#rph-academics" id="rph-nav-academics"></a>
+          </nav>
+          <div class="rph-header-actions">
+            <button type="button" class="rph-theme-toggle" id="rph-theme-toggle" aria-label="Switch theme"><i data-lucide="moon"></i></button>
+            <a href="#staff-login" class="rph-button rph-button-light" id="rph-staff-login"></a>
+          </div>
+        </header>
+        <main>
+          <section class="rph-hero">
+            <div class="rph-hero-copy">
+              <p class="rph-eyebrow" id="rph-welcome"></p>
+              <h1 id="rph-hero-title"></h1>
+              <p id="rph-hero-description"></p>
+              <label class="rph-search"><i data-lucide="search"></i><span class="rph-sr-only" id="rph-search-label"></span><input id="rph-search" type="search" autocomplete="off"></label>
+            </div>
+            <div class="rph-hero-mark" aria-hidden="true"><i data-lucide="book-open-check"></i></div>
+          </section>
+          <section class="rph-progress-section" aria-labelledby="rph-progress-title">
+            <div class="rph-progress-card">
+              <span class="rph-progress-icon" aria-hidden="true"><i data-lucide="chart-no-axes-combined"></i></span>
+              <div class="rph-progress-copy">
+                <p class="rph-progress-eyebrow" id="rph-progress-audience"></p>
+                <h2 id="rph-progress-title"></h2>
+                <p id="rph-progress-description"></p>
+                <small><i data-lucide="lock-keyhole" aria-hidden="true"></i><span id="rph-progress-privacy"></span></small>
+              </div>
+              <a class="rph-progress-action" href="parent-marks.html">
+                <i data-lucide="chart-no-axes-column-increasing" aria-hidden="true"></i>
+                <span id="rph-progress-action"></span>
+                <i data-lucide="arrow-right" aria-hidden="true"></i>
+              </a>
+            </div>
+          </section>
+          <section class="rph-section" id="rph-platforms">
+            <div class="rph-section-heading">
+              <p class="rph-eyebrow" id="rph-platforms-eyebrow"></p>
+              <h2 id="rph-platforms-title"></h2>
+              <p id="rph-platforms-description"></p>
+            </div>
+            <div class="rph-platform-grid" id="rph-platform-grid" aria-live="polite"></div>
+            <p class="rph-empty" id="rph-empty" hidden></p>
+          </section>
+          <section class="rph-quick-section">
+            <div class="rph-quick-inner">
+              <h2 id="rph-quick-title"></h2>
+              <div class="rph-quick-links" id="rph-quick-links"></div>
+            </div>
+          </section>
+          <section class="rph-section rph-previews" id="rph-academics" aria-label="Learning resources and examinations">
+            <div class="rph-preview-panel">
+              <div class="rph-preview-heading">
+                <div><p class="rph-eyebrow" id="rph-documents-eyebrow"></p><h2 id="rph-documents-title"></h2></div>
+                <a class="rph-explore-link" href="digital-library.html"><span id="rph-documents-explore"></span><i data-lucide="arrow-up-right" aria-hidden="true"></i></a>
+              </div>
+              <div class="rph-preview-list" id="rph-document-list" aria-live="polite"></div>
+            </div>
+            <div class="rph-preview-panel">
+              <div class="rph-preview-heading">
+                <div><p class="rph-eyebrow" id="rph-exams-eyebrow"></p><h2 id="rph-exams-title"></h2></div>
+                <a class="rph-explore-link" href="#guest-examinations"><span id="rph-exams-explore"></span><i data-lucide="arrow-up-right" aria-hidden="true"></i></a>
+              </div>
+              <p class="rph-preview-help" id="rph-exams-help"></p>
+              <form class="rph-exam-search" id="rph-exam-search">
+                <label class="rph-sr-only" for="rph-exam-class" id="rph-exam-class-label"></label>
+                <input id="rph-exam-class" name="className" maxlength="120" autocomplete="off" required>
+                <button class="rph-button rph-button-primary" id="rph-exam-submit" type="submit"></button>
+              </form>
+              <div class="rph-preview-list" id="rph-exam-list" aria-live="polite"></div>
+            </div>
+          </section>
+          <section class="rph-about rph-section" id="rph-about">
+            <img src="public/school1.jpeg" alt="" loading="lazy" id="rph-school-photo">
+            <div><p class="rph-eyebrow" id="rph-about-eyebrow"></p><h2 id="rph-about-title"></h2><p id="rph-about-copy"></p></div>
+          </section>
+        </main>
+        <footer class="rph-footer" id="rph-contact">
+          <div class="rph-footer-grid">
+            <div><a href="#rph-top" class="rph-brand"><img src="public/logo.webp" alt="" width="44" height="44" loading="lazy"><span><strong id="rph-footer-name"></strong><small id="rph-footer-motto"></small></span></a><p id="rph-privacy"></p></div>
+            <div><h2 id="rph-contact-title"></h2><p><i data-lucide="map-pin"></i><span id="rph-address"></span></p><p><i data-lucide="phone"></i><a id="rph-phone"></a></p><p><i data-lucide="mail"></i><a id="rph-email"></a></p></div>
+            <div><h2 id="rph-footer-platform-title"></h2><div id="rph-footer-platforms"></div></div>
+          </div>
+          <div class="rph-copyright">© <span id="rph-year"></span> <span id="rph-copyright-name"></span>. <span id="rph-copyright-text"></span></div>
+        </footer>
+      </div>
+      <div class="login-shell">
+        <div class="login-brand">
+          <div class="login-brand-top">
+            <div class="login-brand-logo" id="login-logo-tile" style="background:#fff;padding:5px;border-radius:12px;display:flex;align-items:center;justify-content:center">
+              <img id="login-logo-img" alt="School logo" style="width:48px;height:48px;object-fit:contain" hidden>
+              <i data-lucide="graduation-cap" id="login-logo-fallback" style="color:#0d2f6b"></i>
+            </div>
+          </div>
+          <div class="login-brand-mid">
+            <h1 class="login-brand-title" id="login-school-name">RMS-MIS</h1>
+            <p class="login-brand-subtitle">Rukara Model School Marks Information System</p>
+            <p class="login-brand-tagline">Secure Academic Records. Accurate Results. Better Management.</p>
+            <p class="login-brand-tagline">A secure digital platform designed to support the management of assessments, student marks, results, approvals, and academic reports.</p>
+            <p class="login-brand-subtitle" style="margin-top:22px">Key Functions</p>
+<div class="login-features">
+  <div class="login-feature"><i data-lucide="clipboard-list"></i><span><strong>Assessment Management</strong> &mdash; Create and manage academic assessments.</span></div>
+  <div class="login-feature"><i data-lucide="calculator"></i><span><strong>Marks Management</strong> &mdash; Record, import, review, and process student marks.</span></div>
+  <div class="login-feature"><i data-lucide="badge-check"></i><span><strong>Results Management</strong> &mdash; Review, approve, lock, and publish official results.</span></div>
+  <div class="login-feature"><i data-lucide="printer"></i><span><strong>Academic Reports</strong> &mdash; Generate professional and printable school reports.</span></div>
+  <div class="login-feature"><i data-lucide="shield-check"></i><span><strong>Secure Access</strong> &mdash; Role-based access for administrators, DOS, and teachers.</span></div>
+  <div class="login-feature"><i data-lucide="bar-chart-3"></i><span><strong>Academic Analytics</strong> &mdash; Monitor performance and access meaningful academic information.</span></div>
+</div>
+          </div>
+          <div class="login-brand-bottom">
+              <a href="digital-library.html" title="Open the public Digital Library" style="display:inline-flex;align-items:center;gap:8px;margin-top:12px;text-decoration:none;color:rgba(255,255,255,.85);font-size:13px;font-weight:600"><span style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:50%;background:#fff;color:var(--blue-700);flex:none"><i data-lucide="library-big" style="width:17px;height:17px"></i></span>Open Digital Library</a>
+              <a href="https://rukaramodelschool.com/" target="_blank" rel="noopener" title="Visit Rukara Model School website" aria-label="Visit public website of Rukara Model School" style="display:inline-flex;align-items:center;gap:8px;margin-top:12px;text-decoration:none;color:rgba(255,255,255,.85);font-size:13px;font-weight:600"><span style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:50%;background:#fff;color:var(--blue-700);flex:none"><i data-lucide="globe" style="width:17px;height:17px"></i></span>Visit public website</a>
+            </div>
+        </div>
+
+        <div class="login-auth">
+          <div class="login-card" id="login-signin-view">
+            <div class="login-card-icon"><i data-lucide="lock"></i></div>
+            <h2 class="login-card-title">System Access</h2>
+
+            <div id="login-error" class="login-error" style="display:none" role="alert"></div>
+            <a href="#public-home" class="rph-return" id="rph-return"></a>
+
+            <p id="login-access-description" class="login-card-sub">For school administrators and staff.</p>
+
+            <form id="login-form" novalidate>
+              <div class="form-group">
+                <label for="login-identifier">Email Address</label>
+                <input type="text" id="login-identifier" class="input-field" placeholder="Enter your registered email"
+                       autocomplete="username" spellcheck="false" autocapitalize="none">
+              </div>
+              <div class="form-group">
+                <label for="login-password">Password</label>
+                <div class="input-wrap">
+                  <input type="password" id="login-password" class="input-field" placeholder="Enter your password"
+                         autocomplete="current-password">
+                  <button type="button" id="toggle-password" class="login-eye" aria-label="Show password" aria-pressed="false">
+                    <i data-lucide="eye"></i>
+                  </button>
+                </div>
+              </div>
+              <button type="submit" id="login-btn" class="btn btn-primary btn-full login-submit">
+                <i data-lucide="log-in" style="width:18px;height:18px"></i> Sign In
+              </button>
+            </form>
+              <a class="btn btn-outline btn-full" href="#guest-examinations" style="margin-top:12px"><i data-lucide="clipboard-check"></i> Take a test as a student</a>
+              <button type="button" id="login-portal-toggle" class="login-portal-toggle">
+              <span class="login-portal-icon"><i data-lucide="users-round"></i></span>
+              <span class="login-portal-copy"><strong>Parent / Student Marks</strong><small>Check your student's marks, position and academic performance.</small></span>
+              <i data-lucide="arrow-up-right" class="login-portal-arrow"></i>
+            </button>
+          </div>
+
+          <div class="login-school-info">
+            <h4><i data-lucide="school"></i>Rukara Model School &mdash; Contact</h4>
+            <p class="lsi-row"><span class="lsi-ic"><i data-lucide="map-pin"></i></span><span>Gahini Sector, Kayonza District, Eastern Province, Rwanda</span></p>
+            <p class="lsi-row"><span class="lsi-ic"><i data-lucide="home"></i></span><span id="login-contact-address"></span></p>
+            <p class="lsi-row"><span class="lsi-ic"><i data-lucide="phone"></i></span><span id="login-contact-phone"></span></p>
+            <p class="lsi-row"><span class="lsi-ic"><i data-lucide="mail"></i></span><span id="login-contact-email"></span></p>
+            <p class="lsi-row"><span class="lsi-ic"><i data-lucide="hash"></i></span><span>School Code: 541023</span></p>
+          </div>
+
+          <div class="login-card" id="login-newpass-view" style="display:none">
+            <div class="login-card-icon"><i data-lucide="key-round"></i></div>
+            <h2 class="login-card-title">Create New Password</h2>
+            <p class="login-card-sub">Enter your new password below.</p>
+
+            <div id="newpass-error" class="login-error" style="display:none" role="alert"></div>
+
+            <form id="newpass-form" novalidate>
+              <div class="form-group">
+                <label for="newpass-password">New Password</label>
+                <div class="input-wrap">
+                  <input type="password" id="newpass-password" class="input-field" placeholder="Enter your new password"
+                         autocomplete="new-password">
+                </div>
+              </div>
+              <div class="form-group">
+                <label for="newpass-confirm">Confirm New Password</label>
+                <div class="input-wrap">
+                  <input type="password" id="newpass-confirm" class="input-field" placeholder="Re-enter your new password"
+                         autocomplete="new-password">
+                </div>
+              </div>
+              <button type="submit" id="newpass-btn" class="btn btn-primary btn-full login-submit">
+                <i data-lucide="check" style="width:18px;height:18px"></i> Reset Password
+              </button>
+            </form>
+
+            <button type="button" class="forgot-link reset-back" id="newpass-back">
+              <i data-lucide="arrow-left"></i> Back to Sign In
+            </button>
+          </div>
+
+          <footer class="login-footer">
+            <p>Powered by <span id="login-footer-school">Rukara Model School</span></p>
+            <p class="login-footer-sub">Empowering Education Through Technology</p>
+            <p class="login-footer-sub">&copy; <span id="login-year"></span> Rukara Model School. All rights reserved.</p>
+          </footer>
+        </div>
+      </div>
+    </div>
+
+    <div id="app-layout" class="app-layout" style="display:none">
+      <aside id="sidebar" class="sidebar"></aside>
+      <div id="sidebar-backdrop" class="sidebar-backdrop" onclick="Sidebar.closeMobile()"></div>
+      <div class="main-wrapper">
+        <header id="app-header" class="app-header">
+          <div style="display:flex;align-items:center;gap:12px">
+            <button class="sidebar-toggle-btn" id="sidebar-toggle" onclick="Sidebar.toggle()" aria-controls="sidebar">
+              <i data-lucide="menu"></i>
+            </button>
+            <h2 id="header-title" style="margin:0;font-size:16px;font-weight:600;color:var(--gray-800);display:none">RMS</h2>
+          </div>
+<div class="header-right" style="display:flex;align-items:center;gap:12px;margin-left:auto;position:relative">
+              <div class="acad-year-selector" style="display:flex;align-items:center;gap:8px;background:white;padding:4px 8px;border-radius:var(--radius);border:1px solid var(--gray-200)">
+                <i data-lucide="calendar" style="width:16px;height:16px;color:var(--gray-500)"></i>
+                <span class="text-xs font-semibold" style="color:var(--gray-500);display:none" id="acad-year-label">Academic Year:</span>
+                <select id="global-year-select" class="select-field" style="border:none;background:transparent;padding:0;font-weight:600;color:var(--blue-700);width:auto;cursor:pointer" onchange="App.setGlobalYear(this.value)">
+                  <option value="">Loading...</option>
+                </select>
+              </div>
+              <button id="notify-bell" class="btn btn-ghost text-gray-600 hover-text-blue focus:outline-none focus:ring-2 focus:ring-blue focus:ring-offset-2" aria-label="Notifications, 0 unread" style="padding:6px; border:none; background:transparent; cursor:pointer; position:relative;">
+                <i data-lucide="bell" style="width:20px;height:20px"></i>
+                <span id="notify-badge" class="notify-badge bg-red-600 text-white text-xs font-medium rounded-full absolute -top-1 -right-1 min-w-max" style="display:none;">0</span>
+              </button>
+            </div>
+        </header>
+        <main id="main-content" class="main-content"></main>
+      </div>
+    </div>
+
+    <!-- Notification Dropdown -->
+    <div id="notify-dropdown" style="position:fixed;right:20px;top:60px;min-width:280px;background:white;border:1px solid var(--gray-200);border-radius:var(--radius);padding:12px;box-shadow:var(--shadow-lg);z-index:200;display:none;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--gray-100)">
+        <h3 style="margin:0;font-size:14px;color:var(--gray-700)">Notifications</h3>
+        <button id="mark-all-read" style="background:transparent;border:none;font-size:12px;color:var(--blue-600);cursor:pointer;text-decoration:underline">Mark all as read</button>
+      </div>
+      <div id="notify-list" style="max-height:300px;overflow-y:auto;padding-right:8px;gap:8px"></div>
+      <div style="margin-top:8px;text-align:center;font-size:12px;color:var(--gray-500)">
+        <button id="view-all-notifications" style="background:transparent;border:none;color:var(--blue-600);cursor:pointer;text-decoration:underline">View all notifications</button>
+      </div>
+    </div>
+
+    <!-- Notification Center Page -->
+    <div id="notify-center-page" style="display:none;padding:20px;">
+      <div class="notify-center-header">
+        <h2>Notifications</h2>
+        <button type="button" class="btn btn-outline btn-sm" onclick="NotificationCenter.closeCenter()" aria-label="Close notifications"><i data-lucide="x"></i> Close</button>
+      </div>
+      <div class="notify-center-filters">
+        <button class="tab-btn active" data-filter="all">All</button>
+        <button class="tab-btn" data-filter="unread">Unread</button>
+        <button class="tab-btn" data-filter="messages">Messages</button>
+        <button class="tab-btn" data-filter="marks">Marks</button>
+        <button class="tab-btn" data-filter="assessments">Assessments</button>
+        <button class="tab-btn" data-filter="announcements">Announcements</button>
+        <button class="tab-btn" data-filter="timetable">Timetable</button>
+        <button class="tab-btn" data-filter="system">System</button>
+        <button class="tab-btn" data-filter="reports">Reports</button>
+        <button class="tab-btn" data-filter="important">Important</button>
+        <button type="button" class="btn btn-outline btn-sm" style="margin-left:auto" onclick="Router.go(Auth.isAdmin() ? 'admin/messages' : 'teacher/messages')"><i data-lucide="messages-square"></i> Messages</button>
+      </div>
+      <div id="notify-cards-container"></div>
+      <div id="no-notifications" style="color:var(--gray-400);padding:40px;text-align:center;display:none">No notifications found</div>
+    </div>
+
+    <div id="modal-root"></div>
+    <div id="toast-container" class="toast-container"></div>
+  </div>
+
+  <script src="js/config.js?v=20250924-8"></script>
+  <script src="js/public-home-config.js?v=7"></script>
+  <script src="js/public-home.js?v=12"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+    <script>
+      (function(){
+        var PK = (window.RMS_EMAILJS_PUBLIC_KEY || 'YOUR_EMAILJS_PUBLIC_KEY');
+        function tryInit(attempts) {
+          if (typeof emailjs !== 'undefined' && emailjs.init) {
+            try {
+              if (!PK || PK === 'YOUR_EMAILJS_PUBLIC_KEY') {
+                console.warn('[EMAILJS] Public key not configured. Replace YOUR_EMAILJS_PUBLIC_KEY in index.html with your EmailJS public key.');
+              } else {
+                emailjs.init({ publicKey: PK });
+              }
+            } catch (e) { console.error('[EMAILJS] init failed:', e); }
+          } else if (attempts > 0) {
+            setTimeout(function(){ tryInit(attempts - 1); }, 500);
+          } else {
+            console.error('[EMAILJS] Library failed to load. Check network/CSP for cdn.jsdelivr.net.');
+          }
+        }
+        tryInit(10);
+      })();
+    </script>
+  <script src="js/auth.js?v=20261007-1"></script>
+  <script src="js/db.js?v=20261008-3"></script>
+  <script src="js/utils.js?v=20261008-1"></script>
+  <script src="js/router.js?v=20261008-2"></script>
+  <script src="js/realtime.js?v=20261008-1"></script>
+  <script src="js/components/ui.js?v=20250924-8"></script>
+  <script src="js/components/sidebar.js?v=20261008-1"></script>
+  <script src="js/components/selection.js?v=20261004-1"></script>
+  <script src="js/pages/admin-dashboard.js?v=20261008-4"></script>
+  <script src="js/pages/admin-academic.js?v=20260924-9"></script>
+  <script src="js/pages/admin-classes.js?v=20261007-3"></script>
+  <script src="js/pages/admin-subjects.js?v=20260924-3"></script>
+  <script src="js/pages/admin-teachers.js?v=20260928-7"></script>
+    <script src="js/welcome-notification.js?v=20260928-3"></script>
+  <script src="js/pages/admin-learners.js?v=20261008-4"></script>
+  <script src="js/pages/admin-assignments.js?v=20261006-3"></script>
+  <script src="js/pages/admin-assessments.js?v=20261006-12"></script>
+  <script src="js/pages/admin-assessment-types.js?v=20261002-2"></script>
+  <script src="js/pages/admin-marks.js?v=20261006-2"></script>
+  <script src="js/pages/admin-report-card.js?v=20261008-10"></script>
+  <script src="js/pages/admin-audit-logs.js?v=20250924-8"></script>
+  <script src="js/pages/admin-grading.js?v=20250924-8"></script>
+  <script src="js/pages/admin-settings.js?v=20260924-4"></script>
+  <script src="js/pages/principal-dashboard.js?v=20261007-11"></script>
+  <script src="js/pages/parent-portal.js?v=20261008-11"></script>
+  <script src="js/pages/digital-library.js?v=20261008-18"></script>
+  <script src="js/reports/report-header.js?v=20261004-2"></script>
+  <script src="js/reports/report-utils.js?v=20261008-7"></script>
+  <script src="js/reports/report-comments.js?v=20250924-8"></script>
+  <script src="js/reports/report-student.js?v=20261008-10"></script>
+  <script src="js/reports/report-engine.js?v=20261008-7"></script>
+  <script src="js/reports/report-templates.js?v=20261008-10"></script>
+  <script src="js/reports/report-wizard.js?v=20261008-4"></script>
+  <script src="js/pages/admin-reports.js?v=20261008-7"></script>
+  <script src="js/charts.js?v=20250924-8"></script>
+  <script src="js/analytics-engine.js?v=20261007-1"></script>
+  <script src="js/pages/analytics.js?v=20250924-8"></script>
+  <script src="js/pages/teacher-pages.js?v=20261004-2"></script>
+  <script src="js/pages/teacher-account.js?v=20260924-9"></script>
+  <script src="js/pages/teacher-enter-marks.js?v=20261008-3"></script>
+  <script src="js/pages/teacher-convert-marks.js?v=20261008-3"></script>
+  <script src="js/marks-import.js?v=20261008-1"></script>
+  <script src="js/import-system.js?v=20261008-1"></script>
+  <script src="js/sync-registry.js?v=20261007-9"></script>
+  <script src="js/communication-center.js?v=20260929-2"></script>
+  <script src="js/pages/examination-centre.js?v=20261011-29"></script>
+  <script src="js/app.js?v=20261011-4"></script>
+
+  <!-- PWA Install Banner -->
+  <div id="pwa-install-banner" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:9999;background:linear-gradient(135deg,#0d2f6b,#2563eb);color:#fff;padding:14px 20px;box-shadow:0 -4px 20px rgba(0,0,0,.2);font-family:'Poppins',sans-serif;transform:translateY(100%);transition:transform .4s ease;">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:12px">
+        <img src="public/logo.webp" style="width:40px;height:40px;border-radius:8px" alt="RMS-MIS">
+        <div>
+          <div style="font-weight:700;font-size:14px">Install RMS-MIS</div>
+          <div style="font-size:11px;opacity:.8">Quick access on your device</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button id="pwa-install-btn" style="background:#fff;color:#0d2f6b;border:none;padding:8px 16px;border-radius:8px;font-weight:700;font-size:12px;cursor:pointer">Install</button>
+        <button id="pwa-dismiss-btn" style="background:transparent;color:#fff;border:1px solid rgba(255,255,255,.4);padding:8px 16px;border-radius:8px;font-weight:600;font-size:12px;cursor:pointer">Dismiss</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PWA Floating Action Button -->
+  <button id="pwa-fab" style="display:none;position:fixed;bottom:20px;right:20px;z-index:9998;width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#0d2f6b,#2563eb);color:#fff;border:none;box-shadow:0 4px 16px rgba(0,0,0,.3);cursor:pointer;font-size:24px;align-items:center;justify-content:center" aria-label="Install App">
+    <i data-lucide="download"></i>
+  </button>
+
+  <!-- PWA Snackbar -->
+  <div id="pwa-snackbar" style="display:none;position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:9999;background:#333;color:#fff;padding:12px 24px;border-radius:8px;font-size:13px;font-family:'Poppins',sans-serif;box-shadow:0 4px 12px rgba(0,0,0,.3);max-width:90vw;text-align:center">
+    <span id="pwa-snackbar-text"></span>
+    <button id="pwa-snackbar-install" style="background:#fff;color:#333;border:none;padding:4px 12px;border-radius:4px;margin-left:12px;font-weight:700;font-size:12px;cursor:pointer">Install</button>
+    <button id="pwa-snackbar-dismiss" style="background:transparent;color:#fff;border:1px solid rgba(255,255,255,.4);padding:4px 12px;border-radius:4px;margin-left:8px;font-weight:600;font-size:12px;cursor:pointer">Dismiss</button>
+  </div>
+
+  <!-- Service Worker + PWA Install Logic -->
+  <script>
+    let deferredPrompt;
+    const BANNER_KEY = 'rms_pwa_banner_dismissed';
+    const APP_VERSION = 'v5';
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+  const serviceWorkerBase = new URL('.', window.location.href);
+  const serviceWorkerUrl = new URL('sw.js', serviceWorkerBase).pathname;
+  const serviceWorkerScope = serviceWorkerBase.pathname;
+
+    /* ---------- Install UI ---------- */
+    function showBanner() {
+      if (isStandalone) return;
+      if (localStorage.getItem(BANNER_KEY)) return;
+      const banner = document.getElementById('pwa-install-banner');
+      if (banner) { banner.style.display = 'flex'; banner.style.transform = 'translateY(0)'; }
+      const fab = document.getElementById('pwa-fab');
+      if (fab) fab.style.display = 'flex';
+      setTimeout(() => {
+        const snack = document.getElementById('pwa-snackbar');
+        if (snack) { snack.style.display = 'block'; const txt = document.getElementById('pwa-snackbar-text'); if (txt) txt.textContent = 'Tap Install to add RMS-MIS to your device'; }
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+      }, 1500);
+    }
+
+    // Show immediately
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', showBanner);
+    } else {
+      showBanner();
+    }
+    window.addEventListener('load', showBanner);
+
+    // Capture native prompt
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      showBanner();
+    });
+
+    // App installed
+    window.addEventListener('appinstalled', () => {
+      deferredPrompt = null;
+      const banner = document.getElementById('pwa-install-banner');
+      if (banner) { banner.style.display = 'none'; banner.style.transform = 'translateY(100%)'; }
+      const fab = document.getElementById('pwa-fab');
+      if (fab) fab.style.display = 'none';
+      const snack = document.getElementById('pwa-snackbar');
+      if (snack) snack.style.display = 'none';
+      localStorage.setItem('rms_pwa_banner_dismissed', 'true');
+    });
+
+    // Install button handlers
+    document.getElementById('pwa-install-btn')?.addEventListener('click', () => {
+      if (deferredPrompt) { deferredPrompt.prompt(); deferredPrompt.userChoice.then(() => { deferredPrompt = null; const b = document.getElementById('pwa-install-banner'); if(b){b.style.display='none';b.style.transform='translateY(100%)';} const f=document.getElementById('pwa-fab'); if(f) f.style.display='none'; }); }
+      else { alert('To install: tap menu (⋮) → "Add to Home screen"'); }
+    });
+    document.getElementById('pwa-dismiss-btn')?.addEventListener('click', () => {
+      const b = document.getElementById('pwa-install-banner'); if(b){b.style.display='none';b.style.transform='translateY(100%)';}
+      const f = document.getElementById('pwa-fab'); if(f) f.style.display='none';
+      localStorage.setItem('rms_pwa_banner_dismissed', 'true');
+    });
+    document.getElementById('pwa-fab')?.addEventListener('click', () => {
+      if (deferredPrompt) { deferredPrompt.prompt(); deferredPrompt.userChoice.then(() => { deferredPrompt = null; const f=document.getElementById('pwa-fab'); if(f) f.style.display='none'; }); }
+      else { alert('To install: tap menu (⋮) → "Add to Home screen"'); }
+    });
+    document.getElementById('pwa-snackbar-install')?.addEventListener('click', () => {
+      if (deferredPrompt) { deferredPrompt.prompt(); deferredPrompt.userChoice.then(() => { deferredPrompt = null; const s=document.getElementById('pwa-snackbar'); if(s) s.style.display='none'; }); }
+    });
+    document.getElementById('pwa-snackbar-dismiss')?.addEventListener('click', () => {
+      const s = document.getElementById('pwa-snackbar'); if(s) s.style.display = 'none';
+      localStorage.setItem('rms_pwa_banner_dismissed', 'true');
+    });
+
+    // ---------- Service Worker ---------- */
+    if ('serviceWorker' in navigator && /^https?:$/.test(window.location.protocol)) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register(serviceWorkerUrl, { scope: serviceWorkerScope, updateViaCache: 'none' })
+          .then((reg) => {
+            console.log('[RMS-MIS SW] Registered:', reg.scope);
+            // Check for updates
+            reg.addEventListener('updatefound', () => {
+              const newWorker = reg.installing;
+              newWorker.addEventListener('statechange', () => {
+                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                  // New version available
+                  if (typeof showUpdateNotification === 'function') showUpdateNotification();
+                }
+              });
+            });
+          })
+          .catch((err) => console.warn('[RMS-MIS SW] Registration failed:', err));
+      });
+    }
+
+    // ---------- Update Notification ---------- */
+    window.showUpdateNotification = function() {
+      const snack = document.getElementById('pwa-snackbar');
+      if (snack) {
+        snack.style.display = 'block';
+        const txt = document.getElementById('pwa-snackbar-text');
+        if (txt) txt.textContent = 'New version available! Tap Install to update.';
+      }
+    };
+
+    // ---------- Check for updates every 60 seconds ----------
+    setInterval(() => {
+      if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+        navigator.serviceWorker.getRegistration(serviceWorkerScope).then((reg) => {
+          if (reg) reg.update();
+        }).catch(() => {});
+      }
+    }, 60000);
+
+    // ---------- Cache version check ----------
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        window.location.reload();
+      });
+    }
+
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  </script>
+</body>
+</html>
